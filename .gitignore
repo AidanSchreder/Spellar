@@ -1,0 +1,13 @@
+node_modules/
+test-results/
+playwright-report/
+dev/out/
+*.log
+
+# Downloaded word-list sources (bin/build-guesses.mjs fetches and checks them)
+bin/sources/
+
+# The original build brief stays local: it names a game this repo must never name.
+SPELLAR_BUILD.md
+
+.claude/settings.local.json

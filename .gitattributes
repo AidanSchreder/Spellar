@@ -1,0 +1,8 @@
+# Unix line endings everywhere: the PHP and shell files run on the Linux server,
+# and this machine's Git converts to CRLF by default (core.autocrlf=true).
+* text=auto eol=lf
+
+*.png binary
+*.webm binary
+*.woff2 binary
+*.ttf binary
