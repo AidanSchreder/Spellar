@@ -1,0 +1,688 @@
+/*
+ * Spellar. Every rule is scoped to the game's root element (<div class="spellar" id="spellar-root">).
+ * Rules start with the root's id so that the theme's and Elementor's rules for plain elements
+ * (h1, p, button ...) cannot outrank them, and the root itself starts from `all: initial` so no
+ * inherited font, colour or spacing leaks in from the page.
+ *
+ * Visual grammar (docs: SPELLAR brief §6.1): rectangles (tiles, keys), dots and rings (stars),
+ * hairlines (constellation and scan line) and type. Black ink, SEDS red only for letter states and
+ * stars, one grey for "not in word". No gradients that fade, no shadows, no decoration.
+ */
+
+@font-face {
+  font-family: "Spellar Display";
+  src: url("fonts/cormorant-garamond-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+#spellar-root {
+  all: initial;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 16px 8px;
+  background: #fff;
+  color: #111;
+  font: 400 16px/1.4 "Source Sans Pro", "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  text-align: left;
+  -webkit-text-size-adjust: 100%;
+  container-type: inline-size;
+
+  --sp-red: #ED2839;
+  --sp-ink: #111;
+  --sp-paper: #fff;
+  --sp-fill: #DCDCDC; /* "not in word" tiles and keys */
+  --sp-grey: #5E5E5E; /* letters on --sp-fill: 4.7:1 */
+  --sp-sans: "Source Sans Pro", "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --sp-serif: "Spellar Display", "Cormorant Garamond", Georgia, "Times New Roman", serif;
+
+  /* Tile size: as large as fits both the width and the height left after everything else on a
+     first screen, between 28 px and 56 px. Height budget, top to bottom: the site's header
+     (--sp-above, not sticky, 64 px on phones), wordmark and tagline (64), gap (14), legend (34),
+     keyboard (3 rows + 12), bottom (4). --cols and --rows are set by the script. */
+  --cols: 5;
+  --rows: 6;
+  --sp-gap: 5px;
+  --sp-above: 64px;
+  --sp-key-h: clamp(42px, 6.8vh, 58px);
+  --sp-chrome: calc(var(--sp-above) + 128px + 3 * var(--sp-key-h));
+  --sp-tile-w: calc((100vw - 32px - (var(--cols) - 1) * var(--sp-gap)) / var(--cols));
+  --sp-tile-h: calc((100vh - var(--sp-chrome) - (var(--rows) - 1) * var(--sp-gap)) / var(--rows));
+  --sp-tile: clamp(28px, min(var(--sp-tile-w), var(--sp-tile-h)), 56px);
+  /* Wrong-spot hatch: a band of 45° red stripes, ~14% of the tile, around a white square. */
+  --sp-band: calc(var(--sp-tile) * 0.14);
+  --sp-stripe: 3px;
+}
+
+@supports (width: 1cqi) and (height: 1dvh) {
+  #spellar-root {
+    --sp-key-h: clamp(42px, 6.8dvh, 58px);
+    --sp-tile-w: calc((100cqi - (var(--cols) - 1) * var(--sp-gap)) / var(--cols)); /* cqi: inside the padding */
+    --sp-tile-h: calc((100dvh - var(--sp-chrome) - (var(--rows) - 1) * var(--sp-gap)) / var(--rows));
+  }
+}
+
+/* The site's header is 76 px tall from 1,100 px up (the theme's breakpoint). */
+@media (min-width: 1100px) {
+  #spellar-root {
+    --sp-above: 76px;
+  }
+}
+
+/* ---- Resets inside the game ---- */
+
+#spellar-root *,
+#spellar-root *::before,
+#spellar-root *::after {
+  box-sizing: border-box;
+}
+
+#spellar-root :is(h1, h2, p, ul, ol, li, header, nav, section, form, dialog) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  text-shadow: none;
+  box-shadow: none;
+}
+
+#spellar-root button {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  text-shadow: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  text-decoration: none;
+  line-height: 1;
+  min-height: 0;
+  width: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#spellar-root svg {
+  display: block;
+  max-width: none;
+  overflow: visible;
+}
+
+#spellar-root :focus {
+  outline: none;
+}
+
+#spellar-root :focus-visible {
+  outline: 2px solid var(--sp-ink);
+  outline-offset: 2px;
+}
+
+#spellar-root .sp-sr {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Wordmark and tagline ---- */
+
+#spellar-root .sp-head {
+  height: 64px;
+  padding-top: 8px;
+  text-align: center;
+}
+
+#spellar-root .sp-mark {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.32em;
+  font: 600 clamp(32px, 9cqi, 44px) / 1 var(--sp-serif);
+  color: var(--sp-ink);
+}
+
+#spellar-root .sp-seds {
+  font: 600 0.36em/1 var(--sp-sans);
+  letter-spacing: 0.18em;
+  margin-right: -0.18em; /* the letter spacing after the last S */
+  text-transform: uppercase;
+  color: var(--sp-red);
+}
+
+#spellar-root .sp-word {
+  letter-spacing: 0.005em;
+}
+
+/* The t sits exactly on the p: in this font both stems are the same distance from the glyph's
+   start, so the t starts where the p starts (measured; DECISIONS.md). */
+#spellar-root .sp-p {
+  position: relative;
+  display: inline-block;
+}
+
+#spellar-root .sp-t {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--sp-red);
+  opacity: 0.45;
+}
+
+#spellar-root .sp-tagline {
+  margin-top: 4px;
+  font: 400 clamp(12px, 4.1cqi, 14px) / 1.25 var(--sp-sans);
+}
+
+/* ---- Play area ---- */
+
+#spellar-root .sp-play {
+  position: relative;
+  margin-top: 14px;
+}
+
+#spellar-root .sp-board-wrap {
+  position: relative;
+  width: max-content;
+  margin: 0 auto;
+}
+
+#spellar-root .sp-board {
+  display: grid;
+  grid-template-rows: repeat(var(--rows), var(--sp-tile));
+  gap: var(--sp-gap);
+}
+
+#spellar-root .sp-row {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--sp-tile));
+  gap: var(--sp-gap);
+}
+
+#spellar-root .sp-tile {
+  --sp-band: calc(var(--sp-tile) * 0.14); /* recomputed here, so smaller tiles get a thinner band */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-tile);
+  height: var(--sp-tile);
+  border: 1.5px solid var(--sp-ink);
+  background: var(--sp-paper);
+  color: var(--sp-ink);
+  font: 700 calc(var(--sp-tile) * 0.5) / 1 var(--sp-sans);
+  text-transform: uppercase;
+  user-select: none;
+}
+
+#spellar-root .sp-l {
+  position: relative; /* above the white square of a wrong-spot tile */
+}
+
+#spellar-root .sp-tile[data-state="tbd"] {
+  border-width: 2.5px;
+}
+
+#spellar-root .sp-tile[data-state="absent"] {
+  border-color: var(--sp-fill);
+  background: var(--sp-fill);
+  color: var(--sp-grey);
+}
+
+#spellar-root .sp-tile[data-state="correct"] {
+  border-color: var(--sp-red);
+  background: var(--sp-red);
+  color: #fff;
+}
+
+/* Hard-edged stripes: the "gradient" function is only used to draw two flat colours. */
+#spellar-root .sp-tile[data-state="present"],
+#spellar-root .sp-key[data-state="present"],
+#spellar-root .sp-swatch[data-state="present"] {
+  border: 0;
+  background: repeating-linear-gradient(45deg, var(--sp-red) 0 var(--sp-stripe), #fff var(--sp-stripe) calc(2 * var(--sp-stripe)));
+  color: var(--sp-ink);
+}
+
+#spellar-root .sp-tile[data-state="present"]::before,
+#spellar-root .sp-key[data-state="present"]::before,
+#spellar-root .sp-swatch[data-state="present"]::before {
+  content: "";
+  position: absolute;
+  inset: var(--sp-band);
+  background: #fff;
+}
+
+#spellar-root .sp-tile-mini {
+  --sp-tile: 34px;
+  flex: none;
+}
+
+/* The constellation and the scan line sit on top of the board. */
+#spellar-root .sp-sky {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+#spellar-root .sp-line {
+  fill: none;
+  stroke: var(--sp-ink);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+#spellar-root .sp-star-halo {
+  fill: #fff;
+}
+
+#spellar-root .sp-star-dot {
+  fill: var(--sp-red);
+}
+
+#spellar-root .sp-ring-line {
+  fill: none;
+  stroke: var(--sp-red);
+  stroke-width: 1.5;
+}
+
+#spellar-root .sp-scan {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.5px;
+  background: var(--sp-ink);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* End state: the board stays faintly visible as the sky behind the constellation. */
+#spellar-root.is-sky .sp-board {
+  opacity: 0.14;
+}
+
+#spellar-root.is-done .sp-board-wrap[role="button"] {
+  cursor: pointer;
+}
+
+#spellar-root.is-sky.is-review .sp-board {
+  opacity: 1;
+}
+
+#spellar-root.is-sky.is-review .sp-sky {
+  visibility: hidden;
+}
+
+/* ---- Toast ---- */
+
+#spellar-root .sp-toast {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  z-index: 3;
+  transform: translateX(-50%);
+  padding: 9px 14px;
+  background: var(--sp-ink);
+  color: #fff;
+  font: 600 14px/1.2 var(--sp-sans);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#spellar-root .sp-toast.is-on {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ---- Legend ---- */
+
+#spellar-root .sp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 34px;
+  margin: 0;
+  padding: 9px 0;
+  font: 400 13px/16px var(--sp-sans);
+}
+
+#spellar-root .sp-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+#spellar-root .sp-swatch {
+  --sp-band: 2px;
+  --sp-stripe: 1.5px;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+#spellar-root .sp-swatch[data-state="correct"] {
+  background: var(--sp-red);
+}
+
+#spellar-root .sp-swatch[data-state="absent"] {
+  background: var(--sp-fill);
+}
+
+/* ---- Keyboard ---- */
+
+#spellar-root .sp-keys {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+#spellar-root .sp-krow {
+  display: flex;
+  gap: 5px;
+}
+
+#spellar-root .sp-key {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: var(--sp-key-h);
+  border: 1px solid var(--sp-ink);
+  background: #fff;
+  color: var(--sp-ink);
+  /* 19 px bold counts as large text, so white on SEDS red (4.2:1) passes WCAG AA. */
+  font: 700 19px/1 var(--sp-sans);
+  user-select: none;
+  --sp-band: 3px;
+}
+
+#spellar-root .sp-kwide {
+  flex: 1.5 1 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#spellar-root .sp-khalf {
+  flex: 0.5 1 0;
+}
+
+#spellar-root .sp-key[data-state="absent"] {
+  border-color: var(--sp-fill);
+  background: var(--sp-fill);
+  color: var(--sp-grey);
+}
+
+#spellar-root .sp-key[data-state="correct"] {
+  border-color: var(--sp-red);
+  background: var(--sp-red);
+  color: #fff;
+}
+
+#spellar-root .sp-key:focus-visible {
+  outline-offset: 1px;
+}
+
+/* ---- End of the game ---- */
+
+#spellar-root .sp-end {
+  margin-top: 18px;
+  text-align: center;
+}
+
+/* The answer as a star-atlas label: spaced capitals in the display serif. */
+#spellar-root .sp-answer {
+  font: 600 23px/1.2 var(--sp-serif);
+  letter-spacing: 0.32em;
+  padding-left: 0.32em; /* balances the spacing after the last letter */
+  text-transform: uppercase;
+}
+
+#spellar-root .sp-fact {
+  max-width: 32em;
+  margin: 10px auto 0;
+  font: 400 16px/1.45 var(--sp-sans);
+}
+
+#spellar-root .sp-results {
+  margin-top: 24px;
+}
+
+#spellar-root .sp-nums {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+#spellar-root .sp-num {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+}
+
+#spellar-root .sp-num-v {
+  font: 600 28px/1 var(--sp-sans);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+#spellar-root .sp-num-k,
+#spellar-root .sp-dist-title {
+  font: 600 11px/1.2 var(--sp-sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+#spellar-root .sp-dist-title {
+  margin: 22px 0 8px;
+  text-align: center;
+}
+
+#spellar-root .sp-dist {
+  display: grid;
+  gap: 5px;
+  max-width: 320px;
+  margin: 0 auto;
+  list-style: none;
+}
+
+#spellar-root .sp-bar-row {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 8px;
+  align-items: center;
+  font: 400 13px/1 var(--sp-sans);
+  text-align: left;
+}
+
+#spellar-root .sp-bar-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Bar length is the count; today's result is the filled bar. */
+#spellar-root .sp-bar {
+  display: block;
+  height: 16px;
+  min-width: 2px;
+  border: 1px solid var(--sp-ink);
+  background: #fff;
+}
+
+#spellar-root .sp-bar-row.is-today .sp-bar {
+  background: var(--sp-ink);
+}
+
+#spellar-root .sp-bar-row.is-today {
+  font-weight: 700;
+}
+
+#spellar-root .sp-share-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+#spellar-root .sp-button,
+#spellar-root .sp-share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 28px;
+  border-radius: 8px; /* the site's button corner (seds-style.css) */
+  background: var(--sp-ink);
+  color: #fff;
+  font: 600 16px/1 var(--sp-sans);
+}
+
+#spellar-root .sp-next {
+  font: 400 14px/1.3 var(--sp-sans);
+}
+
+#spellar-root .sp-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 0;
+  text-align: center;
+}
+
+/* ---- Footer row ---- */
+
+#spellar-root .sp-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 18px;
+  margin-top: 18px;
+}
+
+#spellar-root .sp-link {
+  min-height: 44px;
+  padding: 0 6px;
+  font: 400 14px/1.2 var(--sp-sans);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* ---- Dialogs ---- */
+
+#spellar-root .sp-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border: 1.5px solid var(--sp-ink);
+  background: #fff;
+  color: var(--sp-ink);
+}
+
+#spellar-root .sp-dialog[open] {
+  display: block;
+  margin: auto;
+}
+
+#spellar-root .sp-dialog::backdrop {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+#spellar-root .sp-dialog-inner {
+  padding: 22px 20px 18px;
+  font: 400 15px/1.45 var(--sp-sans);
+}
+
+#spellar-root .sp-dialog-title {
+  margin-bottom: 12px;
+  font: 600 26px/1.1 var(--sp-serif);
+}
+
+#spellar-root .sp-dialog-body p {
+  margin-bottom: 10px;
+}
+
+#spellar-root .sp-examples {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 12px;
+  list-style: none;
+}
+
+#spellar-root .sp-examples li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#spellar-root .sp-dialog .sp-stats {
+  margin: 4px 0 6px;
+}
+
+#spellar-root .sp-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+#spellar-root .sp-close {
+  min-height: 40px;
+  padding: 0 20px;
+}
+
+#spellar-root .sp-dialog-small {
+  width: min(340px, calc(100vw - 32px));
+}
+
+#spellar-root .sp-fr {
+  font: 600 18px/1.35 var(--sp-sans);
+}
+
+#spellar-root .sp-fr-en {
+  font-size: 14px;
+}
+
+#spellar-root .sp-copy {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+}

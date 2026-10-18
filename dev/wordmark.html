@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wordmark study</title>
+<!-- Dev only: the site itself already loads Source Sans Pro. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+  @font-face { font-family: "CG500"; src: url("out/fonts/cormorant-garamond-500.woff2") format("woff2"); }
+  @font-face { font-family: "CG600"; src: url("out/fonts/cormorant-garamond-600.woff2") format("woff2"); }
+  @font-face { font-family: "CG700"; src: url("out/fonts/cormorant-garamond-700.woff2") format("woff2"); }
+  @font-face { font-family: "EBG500"; src: url("out/fonts/eb-garamond-500.woff2") format("woff2"); }
+  @font-face { font-family: "PF500"; src: url("out/fonts/playfair-display-500.woff2") format("woff2"); }
+  body { margin: 0; padding: 24px; background: #fff; color: #111; font: 14px/1.4 "Source Sans 3", sans-serif; }
+  .variant { display: grid; grid-template-columns: 120px repeat(3, auto); gap: 20px 40px; align-items: end; padding: 18px 0; }
+  .variant + .variant { border-top: 1px solid #ddd; }
+  .name { font-weight: 600; align-self: center; }
+  .mark { display: inline-flex; align-items: baseline; gap: .32em; white-space: nowrap; }
+  .seds { font-family: "Source Sans 3", "Source Sans Pro", sans-serif; font-weight: 600; text-transform: uppercase;
+          letter-spacing: .18em; color: #ED2839; font-size: .36em; }
+  .word { font-size: 1em; line-height: 1; letter-spacing: .005em; }
+  .p { position: relative; display: inline-block; isolation: isolate; }
+  .behind .t { z-index: -1; }
+  /* Measured: in both fonts the t's stem sits at the same distance from its origin as the p's, so
+     starting the t where the p starts puts one stem exactly on the other. */
+  .t { position: absolute; left: 0; top: 0; }
+  .centred .t { left: 50%; transform: translateX(-50%); }
+  .a .t { color: #ED2839; opacity: .45; }
+  .b .t { color: #111; opacity: .25; }
+  body.final .name { display: none; } body.final .variant { grid-template-columns: repeat(3, auto); }
+</style>
+</head>
+<body>
+  <div id="variants"></div>
+<script>
+  const finals = {
+    a: [["a", "a", "CG600"]], b: [["b", "b", "CG600"]], c: [["c", "a", "EBG500"]],
+  };
+  const which = new URLSearchParams(location.search).get("v");
+  if (which) document.body.classList.add("final");
+  const variants = which ? finals[which] : [
+    ["a  CG600 red t 45%, behind the p", "a behind", "CG600"],
+    ["a  CG600 red t 45%, over the p", "a", "CG600"],
+    ["a  CG600 red t 45%, centred on the p", "a centred", "CG600"],
+    ["b  CG600 black t 25%", "b", "CG600"],
+    ["a  CG500 red t 45%", "a", "CG500"],
+    ["a  CG700 red t 45%", "a", "CG700"],
+    ["c  EB Garamond 500 red t 45%", "a", "EBG500"],
+    ["a  Playfair 500 red t 45%", "a", "PF500"],
+  ];
+  const sizes = [26, 40, 56];
+  const root = document.getElementById("variants");
+  for (const [label, cls, family] of variants) {
+    const row = document.createElement("div");
+    row.className = "variant " + cls;
+    row.innerHTML = `<div class="name">${label}</div>` + sizes.map((s) =>
+      `<div class="mark" style="font-size:${s}px"><span class="seds">SEDS</span>` +
+      `<span class="word" style="font-family:${family}">S<span class="p">p<span class="t">t</span></span>ellar</span></div>`).join("");
+    root.appendChild(row);
+  }
+</script>
+</body>
+</html>

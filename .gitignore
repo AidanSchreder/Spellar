@@ -11,3 +11,6 @@ bin/sources/
 SPELLAR_BUILD.md
 
 .claude/settings.local.json
+
+# Variable font sources (bin/build-fonts.py downloads them)
+dev/fonts-src/

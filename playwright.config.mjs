@@ -1,0 +1,24 @@
+import { defineConfig, devices } from '@playwright/test';
+
+// Two projects: "unit" runs the pure logic in Node (no browser); "e2e" plays the game in Chromium
+// against the local mock API (dev/mock-api.mjs), which serves the same JSON as the PHP routes.
+export default defineConfig({
+  testDir: 'tests',
+  timeout: 30_000,
+  fullyParallel: false,
+  workers: 1, // the e2e tests share the mock server's clock and counters
+  reporter: [['list']],
+  projects: [
+    { name: 'unit', testMatch: /unit[\\/].*\.spec\.mjs$/ },
+    {
+      name: 'e2e',
+      testMatch: /e2e[\\/].*\.spec\.mjs$/,
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:8780' },
+    },
+  ],
+  webServer: {
+    command: 'node dev/mock-api.mjs',
+    url: 'http://localhost:8780/dev/stats',
+    reuseExistingServer: true,
+  },
+});

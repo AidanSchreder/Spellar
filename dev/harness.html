@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spellar harness</title>
+<!-- Dev stand-in for the site's own font loading (the live site already serves Source Sans Pro). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+{{site}}
+<link rel="stylesheet" href="/assets/spellar.css?ver={{ver}}">
+<style>
+  /* A stand-in for the site's header, so layout is judged with it present. */
+  body { margin: 0; background: #fff; }
+  .mock-header { height: 64px; background: #05202e; }
+  @media (min-width: 1100px) { .mock-header { height: 76px; } }
+</style>
+</head>
+<body>
+<div class="mock-header"></div>
+<main>
+<!-- SPELLAR -->
+</main>
+<script src="/assets/vendor/gsap.min.js?ver={{ver}}" defer></script>
+<script src="/assets/vendor/DrawSVGPlugin.min.js?ver={{ver}}" defer></script>
+<script src="/assets/spellar.js?ver={{ver}}" defer></script>
+</body>
+</html>
