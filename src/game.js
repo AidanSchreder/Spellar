@@ -73,7 +73,7 @@ export function createGame(root, config) {
       try {
         return await early.puzzle;
       } catch {
-        /* fall through to a fresh request */
+        /* fall through: a fresh request also reads the server's reason for refusing */
       }
     }
     return fetchPuzzle(config.api, today);
@@ -103,7 +103,12 @@ export function createGame(root, config) {
     return { ...saved, answer, fact };
   }
 
-  function showError() {
+  function showError(err) {
+    // On launch day, players in time zones still on the day before have no puzzle yet.
+    if (err && err.code === 'spellar_not_started') {
+      play.replaceChildren(h('div', { class: 'sp-error' }, h('p', {}, 'The first Spellar arrives at midnight, your time.')));
+      return;
+    }
     play.replaceChildren(
       h(
         'div',
@@ -122,9 +127,9 @@ export function createGame(root, config) {
       const puzzle = await load();
       root.classList.remove('is-loading');
       game = startGame(puzzle);
-    } catch {
+    } catch (err) {
       root.classList.remove('is-loading');
-      showError();
+      showError(err);
     }
   }
 

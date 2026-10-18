@@ -2,7 +2,11 @@
 
 export async function fetchPuzzle(api, date) {
   const res = await fetch(`${api}puzzle?date=${encodeURIComponent(date)}`, { credentials: 'omit' });
-  if (!res.ok) throw new Error(`puzzle ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(`puzzle ${res.status}`);
+    err.code = await res.json().then((b) => b && b.code, () => null);
+    throw err;
+  }
   return res.json();
 }
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Screenshots of every state for review: docs/screens/<size>-<state>.png
-//   node dev/screens.mjs [baseURL]     (default http://localhost:8780, the mock harness)
+//   node dev/screens.mjs [baseURL]     (default http://localhost:8781, the mock on the test data)
 // Uses fixed dates: 2026-10-22 (CYCLE, 5 letters) and 2026-11-16 (ARTEMIS, 7 letters).
 
 import { chromium } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
-const base = process.argv[2] || 'http://localhost:8780';
+// The frozen test data's server: PORT=8781 SPELLAR_DATA_DIR=tests/fixtures/data node dev/mock-api.mjs
+const base = process.argv[2] || 'http://localhost:8781';
 const out = 'docs/screens';
 mkdirSync(out, { recursive: true });
 

@@ -2,10 +2,11 @@
 // moment, and look up that day's answer from data/schedule.json.
 
 import { expect } from '@playwright/test';
-import { loadSchedule } from '../../bin/lib/data.mjs';
+import { readFileSync } from 'node:fs';
 
 export const TZ = 'America/Toronto';
-const schedule = loadSchedule();
+// The frozen test data the e2e mock server reads (see playwright.config.mjs).
+const schedule = JSON.parse(readFileSync(new URL('../fixtures/data/schedule.json', import.meta.url), 'utf8'));
 
 export const answerOn = (date) => schedule.days[date];
 

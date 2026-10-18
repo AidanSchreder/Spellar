@@ -50,6 +50,9 @@ export function puzzleFor({ schedule, words, date, nowMs }) {
   if (Math.abs(daysBetween(utcDate(nowMs), date)) > 1) {
     return { status: 400, body: { code: 'spellar_date_out_of_range', message: 'date must be within one day of today.' } };
   }
+  if (daysBetween(schedule.launch, date) < 0) {
+    return { status: 404, body: { code: 'spellar_not_started', message: `Spellar starts on ${schedule.launch}.` } };
+  }
   let word = schedule.days[date];
   const fallback = !word;
   if (fallback) word = fallbackWord(schedule, words, date);

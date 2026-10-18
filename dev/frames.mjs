@@ -10,7 +10,8 @@
 import { chromium } from '@playwright/test';
 import { mkdirSync, readdirSync, renameSync } from 'node:fs';
 
-const BASE = 'http://localhost:8780';
+// The frozen test data's server: PORT=8781 SPELLAR_DATA_DIR=tests/fixtures/data node dev/mock-api.mjs
+const BASE = 'http://localhost:8781';
 const OUT = 'docs/screens';
 const VIDEO = process.argv.includes('--video');
 const only = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);

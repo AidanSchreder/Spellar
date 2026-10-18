@@ -7,8 +7,12 @@ import vm from 'node:vm';
 import { ROOT, loadSchedule, loadWords, addDays } from '../../bin/lib/data.mjs';
 import { puzzleFor, maxAgeFor, metricsFor, decode, fallbackWord } from '../../bin/lib/puzzle.mjs';
 
-const schedule = loadSchedule();
-const words = loadWords();
+// The route logic is tested on the frozen fixture (launch 2026-10-17); the real data is checked below.
+const fixture = (name) => JSON.parse(readFileSync(join(ROOT, 'tests', 'fixtures', 'data', name), 'utf8'));
+const schedule = fixture('schedule.json');
+const words = fixture('words.json');
+const realSchedule = loadSchedule();
+const realWords = loadWords();
 const at = (iso) => Date.parse(iso);
 
 test.describe('puzzle route logic', () => {
@@ -52,6 +56,12 @@ test.describe('puzzle route logic', () => {
     expect(maxAgeFor('2026-11-11', at('2026-11-10T22:00:00Z'))).toBe(12 * 3600);
   });
 
+  test('a date before launch is "not started", not a puzzle #0', () => {
+    const r = puzzleFor({ schedule, words, date: '2026-10-16', nowMs: at('2026-10-17T05:00:00Z') });
+    expect(r.status).toBe(404);
+    expect(r.body.code).toBe('spellar_not_started');
+  });
+
   test('a date missing from the schedule falls back to day number mod pool size', () => {
     const gappy = { launch: schedule.launch, days: { ...schedule.days } };
     delete gappy.days['2026-12-01'];
@@ -86,7 +96,7 @@ test.describe('event validation', () => {
 
 test.describe('schedule', () => {
   test('validate-data passes on the committed data', () => {
-    const out = execFileSync(process.execPath, [join(ROOT, 'bin', 'validate-data.mjs'), '--today', schedule.launch], { encoding: 'utf8' });
+    const out = execFileSync(process.execPath, [join(ROOT, 'bin', 'validate-data.mjs'), '--today', realSchedule.launch], { encoding: 'utf8' });
     expect(out).toContain('validate-data: OK');
   });
 
@@ -116,6 +126,8 @@ test.describe('schedule', () => {
   });
 
   test('the committed schedule keeps the rotation rules', () => {
+    const schedule = realSchedule;
+    const words = realWords;
     const proper = new Map(words.map((e) => [e.word, e.proper]));
     const pinned = new Map(words.filter((e) => e.pin).map((e) => [e.word, e.pin]));
     const dates = Object.keys(schedule.days).sort();

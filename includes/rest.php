@@ -66,7 +66,11 @@ function spellar_rest_puzzle( WP_REST_Request $request ) {
 		return spellar_rest_error( 400, 'spellar_date_out_of_range', 'date must be within one day of today.' );
 	}
 	$schedule = spellar_schedule();
-	$word     = spellar_word_for( $date );
+	if ( $schedule && spellar_days_between( $schedule['launch'], $date ) < 0 ) {
+		// A player still on the day before launch (far-west time zones on launch day).
+		return spellar_rest_error( 404, 'spellar_not_started', 'Spellar starts on ' . $schedule['launch'] . '.' );
+	}
+	$word = spellar_word_for( $date );
 	if ( ! $schedule || ! $word ) {
 		return spellar_rest_error( 503, 'spellar_no_puzzle', 'No puzzle is available.' );
 	}
