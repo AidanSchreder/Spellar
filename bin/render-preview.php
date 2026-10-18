@@ -15,7 +15,7 @@ $pages = get_posts(
 	array(
 		'post_type'   => 'page',
 		'name'        => 'spellar',
-		'post_status' => 'any',
+		'post_status' => array( 'publish', 'draft', 'pending', 'private', 'future' ), // explicit: with no user, 'any' skips drafts
 		'numberposts' => 1,
 	)
 );
@@ -45,6 +45,9 @@ wp(
 		'preview' => 'true',
 	)
 );
+if ( ! defined( 'WP_USE_THEMES' ) ) {
+	define( 'WP_USE_THEMES', true ); // as index.php sets it for a real page view; WP-CLI does not
+}
 ob_start();
 require ABSPATH . WPINC . '/template-loader.php';
 $html = ob_get_clean();

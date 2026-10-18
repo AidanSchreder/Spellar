@@ -17,7 +17,7 @@ $existing = get_posts(
 	array(
 		'post_type'   => 'page',
 		'name'        => 'spellar',
-		'post_status' => 'any',
+		'post_status' => array( 'publish', 'draft', 'pending', 'private', 'future' ), // explicit: with no user, 'any' skips drafts
 		'numberposts' => 1,
 	)
 );
