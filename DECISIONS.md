@@ -12,6 +12,11 @@ what the brief left open and what was found on the site.
 - **The "Elementor mobile menu" is the site's own menu bar** — the header is Astra's, restyled by the must-use plugin `seds-nav` (seds-web repo); below 1,100 px its drawer reuses the same `#primary-menu` list, and links that do not fit move under "More" as the same `<li>` elements. So the menu dot only has to find `.spellar-menu-item` once.
 - **No SEO plugin is active and the site is public (`blog_public` = 1)** — "SEO noindex left at the site default" therefore means: indexable, nothing set on the page.
 
+## Production
+
+- **Backup before the first activation: `~/backups/seds-20261017-pre-spellar.sql.gz`** on the server (outside the web root), taken 2026-10-17 20:24 PDT with `wp db export - | gzip`; 177 MB, gzip-checked, ends "Dump completed". Gzipped because the backups folder already holds 4.9 GB of uncompressed dumps. Restore: `gunzip -c ~/backups/seds-20261017-pre-spellar.sql.gz | wp db import -` (only if something went badly wrong: it would undo every change made to the site since).
+- **Homepage before the plugin (2026-10-17 20:20 PDT, page-cache copy, logged out, fresh browser): 74 requests, 1,428.9 KB transferred, 390.3 KB of HTML** (`node dev/footprint.mjs`).
+
 ## Repo and tooling
 
 - **The build brief (`SPELLAR_BUILD.md`) is not committed** — it names the game Spellar must never be compared to, and the acceptance checklist forbids that name anywhere in the repo. It stays in the local folder, git-ignored. Change: commit a copy with that name removed.
