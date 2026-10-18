@@ -1,5 +1,5 @@
-// The results: stats numbers, guess distribution, and the end-of-game block
-// (answer label, fact, stats, share button, countdown).
+// The results: stats numbers, guess distribution (in the Stats dialog only), and the end-of-game
+// block (answer label, fact, stats numbers, share button, countdown).
 
 import { h, srOnly } from './dom.js';
 import { currentStreak, winPercent } from '../stats.js';
@@ -9,7 +9,8 @@ function number(value, label) {
 }
 
 // today: { guesses, won } for the finished puzzle, so its bar can be marked; null otherwise.
-export function createStats(stats, { todayNumber, maxGuesses, today }) {
+// distribution: false leaves out the guess distribution (the end-of-game block).
+export function createStats(stats, { todayNumber, maxGuesses, today, distribution = true }) {
   const rowsShown = maxGuesses === 7 || stats.dist[6] > 0 ? 7 : 6;
   const most = Math.max(1, ...stats.dist.slice(0, rowsShown));
   const bars = [];
@@ -31,20 +32,16 @@ export function createStats(stats, { todayNumber, maxGuesses, today }) {
       ),
     );
   }
-  return h(
+  const nums = h(
     'div',
-    { class: 'sp-stats' },
-    h(
-      'div',
-      { class: 'sp-nums' },
-      number(stats.played, 'Played'),
-      number(winPercent(stats), 'Win %'),
-      number(currentStreak(stats, todayNumber), 'Streak'),
-      number(stats.maxStreak, 'Max streak'),
-    ),
-    h('p', { class: 'sp-dist-title' }, 'Guesses'),
-    h('ol', { class: 'sp-dist' }, bars),
+    { class: 'sp-nums' },
+    number(stats.played, 'Played'),
+    number(winPercent(stats), 'Win %'),
+    number(currentStreak(stats, todayNumber), 'Streak'),
+    number(stats.maxStreak, 'Max streak'),
   );
+  if (!distribution) return h('div', { class: 'sp-stats' }, nums);
+  return h('div', { class: 'sp-stats' }, nums, h('p', { class: 'sp-dist-title' }, 'Guesses'), h('ol', { class: 'sp-dist' }, bars));
 }
 
 export function createEnd({ answer, fact, won }) {

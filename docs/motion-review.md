@@ -1,6 +1,6 @@
 # Motion review
 
-How the four moments were checked. Frames come from `node dev/frames.mjs`, which plays the real
+How the motion moments were checked. Frames come from `node dev/frames.mjs`, which plays the real
 game with Playwright's fake clock (it also fakes `requestAnimationFrame`, so GSAP is stepped
 exactly) and saves contact sheets as `docs/screens/motion-<moment>-<mobile|desktop>.png`, at
 375×812 and 1280×800. `node dev/frames.mjs --video` also records a whole game in real time to
@@ -10,8 +10,9 @@ exactly) and saves contact sheets as `docs/screens/motion-<moment>-<mobile|deskt
 | Moment | Brief | As built |
 |---|---|---|
 | Letter pop | 1 → 1.06 → 1, 100 ms, power1.out; outline to 2.5 px | Same; the outline changes with the typed state. |
-| Scan reveal | 1.5 px line, tile height + 8, ~140 ms per tile, linear; each tile flips (scaleY 1→0→1, 280 ms, power2.inOut) as the line crosses its centre, state switches at the midpoint; line fades over 120 ms; keys update after the sweep | Same. Flip in two halves (power2.in, then power2.out). A 7-letter row takes 1.2 s. |
+| Reveal | Brief: a scan line with flips. Replaced 2026-10-18 at Aidan's request by a star | Tiles 150 ms apart; on each, a copy in the new state clipped to a star grows from the centre, turning −36° → 0°, until it covers the tile (420 ms, power2.in); wrong-spot copies start fully hatched and open their white square (160 ms, power2.out); keys update after the row. A 7-letter row takes about 1.5 s. |
 | Invalid shake | ±6 px, five times, 300 ms; toast 1.5 s | Five swings (−6, +6, −6, +6, −6, back to 0), sine between keyframes. |
+| Title swap | Not in the brief (it kept the wordmark static); added 2026-10-18 at Aidan's request | 5 s after opening, then every 25–45 s while visible: p fades out (315 ms, sine.in) as t fades in (from 135 ms, sine.out) and the slot narrows to the t (450 ms, power2.inOut); holds 1.6 s; reverses. Never with reduced motion. |
 | Constellation | 300 ms pause; tiles to ~14% in 400 ms; stars pop 0→1 in 180 ms back.out(2), 120 ms apart; hairline per segment ~250 ms power1.inOut as each star lands; label letter-spacing tight → final with opacity over 500 ms; then fact, then panel; ≤ 3.5 s for 7 letters; a tap skips | Same values. 7 letters: about 2.2–2.6 s from the last flip to the full results; 5 letters about 1.8 s. |
 
 ## Pass 1
@@ -46,3 +47,18 @@ exactly) and saves contact sheets as `docs/screens/motion-<moment>-<mobile|deskt
 One deliberate cut: when the game ends, the keyboard and legend are removed at once (no
 animation, which the brief does not allow beyond the four moments), so the board stands alone
 for the constellation and the results set in below it.
+
+## Pass 3 (2026-10-18, after the first play-through)
+
+- **Reveal**: first version clipped every tile's new state to a growing star. On red and grey
+  tiles the star read well; on wrong-spot tiles it was invisible until it reached the hatched
+  band, because those tiles are white in the middle. Their copy now starts fully hatched, so the
+  star shows as a hatched star, and the white square opens once the tile is covered. Checked at
+  both sizes, every 50 ms (`motion-reveal-*.png`).
+- **Title swap**: checked every 100 ms (`motion-title-*.png`): "Spellar" eases into "Stellar"
+  with the letters closing up, holds, and turns back; nothing else in the header moves except
+  the word re-centring by half the width change.
+- `motion.spec.mjs` checks that each reveal cover is clipped to a ten-cornered polygon, is
+  hidden from screen readers and is gone when the row is done; that the title swaps at 5 s and
+  is back by 8 s; and, with reduced motion, that there is no cover and the t never shows.
+

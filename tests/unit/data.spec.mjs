@@ -148,11 +148,12 @@ test.describe('schedule', () => {
 });
 
 test.describe('menu dot script', () => {
+  // True when the script adds its style rule (which draws the dot on the menu item's link).
   function runDot(stored, today = new Date(2026, 10, 20, 9)) {
-    const link = { children: [], querySelector: () => link.children[0] || null, appendChild: (el) => link.children.push(el) };
+    const added = [];
     const doc = {
-      querySelectorAll: () => [link],
-      createElement: () => ({ style: {}, setAttribute() {}, className: '' }),
+      head: { appendChild: (el) => added.push(el) },
+      createElement: (tag) => ({ tag }),
     };
     const storage = { getItem: () => (stored === undefined ? null : stored === 'throw' ? (() => { throw new Error('blocked'); })() : JSON.stringify(stored)) };
     const RealDate = Date;
@@ -161,7 +162,11 @@ test.describe('menu dot script', () => {
       static parse(s) { return RealDate.parse(s); }
     }
     vm.runInNewContext(readFileSync(join(ROOT, 'assets', 'menu-dot.js'), 'utf8'), { document: doc, localStorage: storage, Date: FixedDate, JSON });
-    return link.children.length === 1;
+    if (!added.length) return false;
+    expect(added).toHaveLength(1);
+    expect(added[0]).toMatchObject({ tag: 'style', id: 'spellar-dot-style' });
+    expect(added[0].textContent).toMatch(/^\.spellar-menu-item>a::after\{content:"";.*width:6px;height:6px;.*border-radius:50%;background:#ED2839/);
+    return true;
   }
 
   test('shows for a visitor who never opened the game', () => {

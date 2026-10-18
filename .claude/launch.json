@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "spellar-mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["dev/mock-api.mjs"],
+      "port": 8780
+    }
+  ]
+}

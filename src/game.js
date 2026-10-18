@@ -31,8 +31,9 @@ export function createGame(root, config) {
   const live = h('div', { class: 'sp-sr', role: 'status', 'aria-live': 'polite' });
   const toastEl = h('div', { class: 'sp-toast', 'aria-hidden': 'true' });
   const play = h('div', { class: 'sp-play' });
+  const header = createHeader();
   root.replaceChildren(
-    createHeader(),
+    header.el,
     play,
     createFooter({ onHelp: openHelp, onStats: openStats, onFrench: openFrench }),
     live,
@@ -67,6 +68,9 @@ export function createGame(root, config) {
   /* ---- Loading the puzzle ---- */
 
   async function requestPuzzle() {
+    // Normally the page itself carries today's puzzle; only an old saved copy of it does not.
+    const carried = config.days && config.days[today];
+    if (carried) return carried;
     const early = window.spellarEarly;
     if (early && early.date === today) {
       window.spellarEarly = null; // use it once; a retry asks again
@@ -149,7 +153,7 @@ export function createGame(root, config) {
         example('B', 'absent', 'Not in word.'),
       ),
       h('p', {}, 'Finish, and your guesses become a constellation, with a fact about the answer.'),
-      h('p', {}, 'A new Spellar every day at midnight, your time.'),
+      h('p', {}, 'A new Spellar every day at midnight.'),
     ]);
   }
 
@@ -248,10 +252,9 @@ export function createGame(root, config) {
 
       board.board.setAttribute('aria-busy', 'true'); // the row is being revealed; input is locked
       await motion.reveal({
-        row: board.rows[r],
         tiles: board.tiles[r],
-        scan: board.scan,
         count: cols,
+        look: (i, el) => setTile(el, guess[i], res[i]),
         apply: (i) => setTile(board.tiles[r][i], guess[i], res[i]),
       });
       board.board.removeAttribute('aria-busy');
@@ -354,10 +357,12 @@ export function createGame(root, config) {
       const sky = buildSky(board.sky, stars);
       const endBlock = createEnd({ answer, fact, won });
       shareRow = createShareRow({ onShare: share, countdownText: countdownText() });
+      // The numbers only: the guess distribution repeats what the board shows, so it is in Stats.
       const statsBlock = createStats(store.get().stats, {
         todayNumber: number,
         maxGuesses: rows,
         today: { won, guesses: saved().guesses.length },
+        distribution: false,
       });
       endBlock.results.append(statsBlock, shareRow.el);
       keyboard.el.remove();
@@ -440,5 +445,6 @@ export function createGame(root, config) {
   });
 
   run();
+  motion.titleSwaps(header.title);
   return { store };
 }

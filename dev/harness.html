@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
 {{site}}
 <link rel="stylesheet" href="/assets/spellar.css?ver={{ver}}">
+<!-- As the plugin prints them: the game's script async in <head>, GSAP deferred at the end. -->
+<script src="/assets/spellar.js?ver={{ver}}" async></script>
 <style>
   /* A stand-in for the site's header, so layout is judged with it present. */
   body { margin: 0; background: #fff; }
@@ -22,6 +24,5 @@
 </main>
 <script src="/assets/vendor/gsap.min.js?ver={{ver}}" defer></script>
 <script src="/assets/vendor/DrawSVGPlugin.min.js?ver={{ver}}" defer></script>
-<script src="/assets/spellar.js?ver={{ver}}" defer></script>
 </body>
 </html>

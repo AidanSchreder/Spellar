@@ -59,6 +59,10 @@ function spellar_page_has_game() {
 	return is_string( $elementor ) && false !== strpos( $elementor, '[spellar' );
 }
 
+// The game's script loads async from <head>, so it starts the game the moment it arrives instead
+// of after the rest of this long page (deferred scripts wait for all of it). It needs nothing else
+// to start: GSAP only drives the animations, which begin after the player's first key press, so
+// it stays deferred and the game skips any animation asked for before it has loaded.
 function spellar_enqueue_assets() {
 	if ( wp_script_is( 'spellar', 'enqueued' ) ) {
 		return;
@@ -68,9 +72,18 @@ function spellar_enqueue_assets() {
 		'strategy'  => 'defer',
 	);
 	wp_enqueue_style( 'spellar', SPELLAR_URL . 'assets/spellar.css', array(), spellar_asset_version( 'assets/spellar.css' ) );
+	wp_enqueue_script(
+		'spellar',
+		SPELLAR_URL . 'assets/spellar.js',
+		array(),
+		spellar_asset_version( 'assets/spellar.js' ),
+		array(
+			'in_footer' => false,
+			'strategy'  => 'async',
+		)
+	);
 	wp_enqueue_script( 'spellar-gsap', SPELLAR_URL . 'assets/vendor/gsap.min.js', array(), spellar_asset_version( 'assets/vendor/gsap.min.js' ), $footer );
 	wp_enqueue_script( 'spellar-drawsvg', SPELLAR_URL . 'assets/vendor/DrawSVGPlugin.min.js', array( 'spellar-gsap' ), spellar_asset_version( 'assets/vendor/DrawSVGPlugin.min.js' ), $footer );
-	wp_enqueue_script( 'spellar', SPELLAR_URL . 'assets/spellar.js', array( 'spellar-gsap', 'spellar-drawsvg' ), spellar_asset_version( 'assets/spellar.js' ), $footer );
 }
 
 add_action(
@@ -116,8 +129,10 @@ function spellar_shortcode() {
 	$api     = rest_url( 'spellar/v1/' );
 	$guesses = add_query_arg( 'ver', spellar_asset_version( 'data/guesses.txt' ), SPELLAR_URL . 'data/guesses.txt' );
 	$early   = spellar_inline_file( 'assets/early.js', '</script' );
+	// The puzzles for the days around today ride along in the page (see spellar_page_days()).
+	$days = wp_json_encode( (object) spellar_page_days() );
 
-	$html  = '<div class="spellar" id="spellar-root" data-api="' . esc_url( $api ) . '" data-guesses="' . esc_url( $guesses ) . '"></div>';
+	$html  = '<div class="spellar" id="spellar-root" data-api="' . esc_url( $api ) . '" data-guesses="' . esc_url( $guesses ) . '" data-days="' . esc_attr( $days ) . '"></div>';
 	$html .= '' !== $early ? "\n<script>" . $early . "</script>\n" : '';
 	$html .= '<noscript><p>Spellar needs JavaScript to play.</p></noscript>';
 	return $html;
@@ -135,13 +150,15 @@ function spellar_inline_file( $relative, $closing_tag ) {
 
 // The only thing Spellar prints site-wide: under 1 KB of script, no request, no dependencies. It adds
 // the dot to a menu item with the class "spellar-menu-item"; without that item it does nothing.
+// It runs in <head> and adds a style rule rather than an element, so the dot is there when the
+// menu is first drawn and when the site's menu script measures the bar.
 add_action(
-	'wp_footer',
+	'wp_head',
 	function () {
 		$js = spellar_inline_file( 'assets/menu-dot.min.js', '</script' );
 		if ( '' !== $js ) {
 			echo '<script id="spellar-dot">' . $js . "</script>\n";
 		}
 	},
-	20
+	1
 );

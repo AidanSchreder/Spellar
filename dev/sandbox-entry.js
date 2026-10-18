@@ -1,7 +1,8 @@
 // Animation sandbox (dev only): builds a board with fixed guesses and hands each motion timeline
 // to GSDevTools, so it can be scrubbed frame by frame. Bundled on request by dev/mock-api.mjs.
 
-import { buildFinale, buildReveal, buildShake, TIMING } from '../src/motion.js';
+import { buildFinale, buildReveal, buildShake, buildTitleSwap, TIMING } from '../src/motion.js';
+import { createHeader } from '../src/ui/chrome.js';
 import { createBoard, setTile } from '../src/ui/board.js';
 import { buildSky, layoutSky } from '../src/ui/sky.js';
 import { createEnd } from '../src/ui/panel.js';
@@ -57,12 +58,23 @@ const actions = {
     const guess = guesses[1];
     const res = evaluate(guess, answer);
     [...guess].forEach((c, i) => setTile(board.tiles[1][i], c, 'tbd'));
-    show(buildReveal({ row: board.rows[1], tiles: board.tiles[1], scan: board.scan, count: len, apply: (i) => setTile(board.tiles[1][i], guess[i], res[i]) }, { paused: true }));
+    show(buildReveal({
+      tiles: board.tiles[1],
+      count: len,
+      look: (i, el) => setTile(el, guess[i], res[i]),
+      apply: (i) => setTile(board.tiles[1][i], guess[i], res[i]),
+    }, { paused: true }));
   },
   shake() {
     const { board } = setUp(+lengthSel.value, 'win', 1);
     [...'XQZVKJW'.slice(0, +lengthSel.value)].forEach((c, i) => setTile(board.tiles[1][i], c, 'tbd'));
     show(buildShake(board.rows[1], { paused: true }));
+  },
+  title() {
+    const header = createHeader();
+    root.className = 'spellar';
+    stage.replaceChildren(header.el);
+    show(buildTitleSwap(header.title, { paused: true }));
   },
   win() { finale('win'); },
   lose() { finale('lose'); },

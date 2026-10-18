@@ -80,9 +80,13 @@ test('winning shows the constellation, answer, fact, stats, share and countdown'
   await expect(root.locator('.sp-line')).toHaveCount(4);
   const nums = await root.locator('.sp-end .sp-num-v').allTextContents();
   expect(nums).toEqual(['1', '100', '1', '1']);
-  await expect(root.locator('.sp-end .sp-bar-row.is-today .sp-bar-n')).toHaveText('2');
+  // The guess distribution is left to the Stats dialog, with today's bar marked there.
+  await expect(root.locator('.sp-end .sp-dist')).toHaveCount(0);
   await expect(root.locator('.sp-share')).toHaveText('Share');
   await expect(root.locator('.sp-next')).toHaveText('Next Spellar in 14h 0m');
+  await page.getByRole('button', { name: 'Stats' }).click();
+  await expect(page.locator('dialog[open] .sp-bar-row.is-today .sp-bar-n')).toHaveText('2');
+  await page.keyboard.press('Escape');
 
   // Tapping the constellation shows the guesses at full strength, and back.
   await root.locator('.sp-board-wrap').click();
@@ -149,7 +153,7 @@ test('sharing copies star text without the answer', async ({ page, context }) =>
   await expect(page.locator('.sp-toast')).toHaveText('Copied');
   // (Windows' clipboard hands lines back with CRLF endings.)
   const text = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n');
-  expect(text).toBe('Spellar #6 2/6\n★✦✦··\n★★★★★\nseds.ca/spellar');
+  expect(text).toBe('Spellar #6 2/6\n★✦✦☆☆\n★★★★★\nseds.ca/spellar');
   expect(text).not.toContain(ANSWER);
 });
 
@@ -168,6 +172,7 @@ test('the Français button explains, and is counted once a day', async ({ page }
 test('How to play and Stats open as dialogs, and typing does not leak into the board', async ({ page }) => {
   await page.getByRole('button', { name: 'How to play' }).click();
   await expect(page.locator('dialog[open] h2')).toHaveText('How to play');
+  await expect(page.locator('dialog[open] .sp-dialog-body p').last()).toHaveText('A new Spellar every day at midnight.');
   await page.keyboard.type('abc');
   await page.keyboard.press('Escape');
   await expect(tile(page, 0, 0)).toHaveAttribute('data-state', 'empty');
@@ -230,4 +235,53 @@ test('a finished page moves on to the next puzzle at midnight, and a stale tab o
   await expect(page.locator('#spellar-root')).not.toHaveClass(/is-done/, { timeout: 10_000 });
   await expect(page.locator('#spellar-root .sp-board')).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('spellar:v1')).puzzle.date)).toBe('2026-10-23');
+});
+
+test.describe('loading the puzzle', () => {
+  // beforeEach has already played the page once: forget the puzzle it saved.
+  test.beforeEach(async ({ page }) => page.evaluate(() => localStorage.clear()));
+
+  test("the page carries the day's puzzle, so the game never waits on the puzzle route", async ({ page }) => {
+    const asked = [];
+    page.on('request', (r) => r.url().includes('/puzzle') && asked.push(r.url()));
+    await openOn(page, `${DAY}T10:00:00`);
+    await expect(row(page, 0).locator('.sp-tile')).toHaveCount(5);
+    await typeWord(page, ANSWER);
+    await expect(page.locator('#spellar-root .sp-answer-word')).toHaveText(ANSWER);
+    expect(asked).toEqual([]);
+  });
+
+  test('an old saved copy of the page without today falls back to the puzzle route', async ({ page }) => {
+    const asked = [];
+    page.on('request', (r) => r.url().includes('/puzzle') && asked.push(r.url()));
+    await openOn(page, `${DAY}T10:00:00`, { path: '/?days=none' });
+    await expect(row(page, 0).locator('.sp-tile')).toHaveCount(5);
+    expect(asked).toEqual([expect.stringContaining(`/puzzle?date=${DAY}`)]); // once: the early fetch, reused
+    await typeWord(page, ANSWER);
+    await expect(page.locator('#spellar-root .sp-answer-word')).toHaveText(ANSWER);
+  });
+
+  test('the game script may run before the page reaches its root', async ({ page }) => {
+    // The page stalls before the root, so the async script has arrived and run by then.
+    await openOn(page, `${DAY}T10:00:00`, { path: '/?stall=1500' });
+    await expect(row(page, 0).locator('.sp-tile')).toHaveCount(5);
+    expect(await page.evaluate(() => typeof window.spellarBoot)).toBe('function'); // it waited for the root
+  });
+
+  test('the game script may run after the page reaches its root', async ({ page }) => {
+    // Hold the script back until the whole page has been parsed, then let it run: it must still start.
+    let release;
+    const held = new Promise((r) => (release = r));
+    await page.route('**/assets/spellar.js*', async (route) => {
+      await held;
+      await route.continue();
+    });
+    const instant = new Date(`${DAY}T10:00:00-04:00`).toISOString();
+    await page.request.post('/dev/now', { data: { now: instant } });
+    await page.clock.install({ time: new Date(instant) });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    expect(await page.locator('#spellar-root').getAttribute('data-mounted')).toBeNull();
+    release();
+    await expect(row(page, 0).locator('.sp-tile')).toHaveCount(5);
+  });
 });

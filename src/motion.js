@@ -1,9 +1,10 @@
-// The four signature moments, and nothing else moves:
+// The signature moments, and nothing else moves:
 //   1. letter pop     a typed tile scales 1 → 1.06 → 1 in 100 ms
-//   2. scan reveal    a hairline sweeps the row; each tile flips as the line crosses its centre
+//   2. star reveal    left to right, a star grows from each tile's centre and stamps its new state
 //   3. invalid shake  the row swings ±6 px, five times, in 300 ms
 //   4. constellation  the board fades to a faint sky, stars pop in letter order, a hairline joins
 //                     them, then the answer label, the fact and the results set in
+//   5. title swap     now and then the p of "Spellar" fades into a t ("Stellar") and back
 //
 // GSAP (and DrawSVG for the hairlines) come from assets/vendor as window globals. With reduced
 // motion asked for, or GSAP missing, every state change happens instantly instead.
@@ -11,9 +12,9 @@
 
 const T = {
   pop: 0.1,
-  scanPerTile: 0.14,
-  flip: 0.28,
-  scanFade: 0.12,
+  starPerTile: 0.15,
+  starGrow: 0.42,
+  starOpen: 0.16,
   shake: 0.3,
   pause: 0.3,
   fade: 0.4,
@@ -23,6 +24,10 @@ const T = {
   segment: 0.25,
   label: 0.5,
   text: 0.3,
+  swap: 0.45,
+  swapHold: 1.6,
+  swapFirst: 5,
+  swapEvery: [25, 45],
 };
 export const TIMING = T;
 
@@ -56,28 +61,69 @@ export function pop(tile) {
   );
 }
 
-/* ---- 2. Scan-line reveal ---- */
+/* ---- 2. Star reveal ---- */
 
-export function buildReveal({ row, tiles, scan, count, apply }, vars = {}) {
+// A five-pointed star (inner radius 40% of the outer) as a clip-path, centred on the box, scaled so
+// that 1 just fits the box and turned by `turn` degrees. At STAR_COVER its inner corners reach past
+// the box's corners, so the star covers the whole tile.
+const STAR_INNER = 0.4;
+const STAR_COVER = 0.75 / (0.5 * STAR_INNER);
+
+export function starClip(scale, turn = 0) {
+  const pts = [];
+  for (let k = 0; k < 10; k++) {
+    const a = ((k * 36 - 90 + turn) * Math.PI) / 180;
+    const r = (k % 2 ? 0.5 * STAR_INNER : 0.5) * scale * 100;
+    pts.push(`${(50 + r * Math.cos(a)).toFixed(2)}% ${(50 + r * Math.sin(a)).toFixed(2)}%`);
+  }
+  return `polygon(${pts.join(', ')})`;
+}
+
+// look(i, el) draws tile i's new state on el; apply(i) gives the tile itself that state. Each tile
+// gets a cover, a copy of itself in the new state, clipped to a star that grows from the centre
+// until it fills the tile; then the tile takes the state and the cover goes. A wrong-spot tile is
+// white in the middle, which would hide the star, so its cover starts fully hatched (is-filling)
+// and opens its white square once the star has filled the tile.
+export function buildReveal({ tiles, count, look, apply }, vars = {}) {
   const gsap = engine();
-  const wrap = scan.parentNode.getBoundingClientRect();
-  const first = tiles[0].getBoundingClientRect();
-  const last = tiles[count - 1].getBoundingClientRect();
-  const startX = first.left - wrap.left;
-  const endX = last.right - wrap.left;
-  const sweep = count * T.scanPerTile; // constant speed: about 140 ms per tile
   const tl = gsap.timeline(vars);
-
-  tl.set(scan, { x: startX, y: first.top - wrap.top - 4, height: first.height + 8, autoAlpha: 1 }, 0);
-  tl.to(scan, { x: endX, duration: sweep, ease: 'none' }, 0);
   tiles.slice(0, count).forEach((tile, i) => {
-    const box = tile.getBoundingClientRect();
-    const crossesCentre = ((box.left + box.width / 2 - wrap.left - startX) / (endX - startX)) * sweep;
-    tl.to(tile, { scaleY: 0, duration: T.flip / 2, ease: 'power2.in', overwrite: 'auto' }, crossesCentre)
-      .call(apply, [i], crossesCentre + T.flip / 2) // the new state shows at the midpoint
-      .to(tile, { scaleY: 1, duration: T.flip / 2, ease: 'power2.out', clearProps: 'transform' }, crossesCentre + T.flip / 2);
+    const at = i * T.starPerTile;
+    const star = { scale: 0, turn: -36, open: 0 };
+    let cover = null;
+    const opening = () => cover && cover.dataset.state === 'present';
+    tl.call(() => {
+      cover?.remove();
+      cover = tile.cloneNode(true);
+      cover.removeAttribute('style'); // no leftover transform from the letter pop
+      cover.classList.add('sp-cover');
+      cover.removeAttribute('role');
+      cover.setAttribute('aria-hidden', 'true');
+      look(i, cover);
+      cover.style.clipPath = starClip(0);
+      if (opening()) cover.style.setProperty('--sp-open', '0');
+      tile.append(cover);
+    }, null, at);
+    // power2.in: the star grows slowly while it is small enough to read as a star, then fills.
+    tl.to(star, {
+      scale: STAR_COVER,
+      turn: 0,
+      duration: T.starGrow,
+      ease: 'power2.in',
+      onUpdate: () => cover && (cover.style.clipPath = starClip(star.scale, star.turn)),
+    }, at);
+    tl.to(star, {
+      open: 1,
+      duration: T.starOpen,
+      ease: 'power2.out',
+      onUpdate: () => opening() && cover.style.setProperty('--sp-open', star.open.toFixed(3)),
+    }, at + T.starGrow);
+    tl.call(() => {
+      apply(i);
+      cover?.remove();
+      cover = null;
+    }, null, at + T.starGrow + T.starOpen);
   });
-  tl.to(scan, { autoAlpha: 0, duration: T.scanFade, ease: 'none' }, sweep);
   return tl;
 }
 
@@ -165,4 +211,40 @@ export async function finale(parts) {
 // A tap or key press during the end sequence jumps straight to its end state.
 export function skip() {
   if (current) current.progress(1);
+}
+
+/* ---- 5. Title swap ---- */
+
+// slot holds the p (in the flow, so it sets the slot's width) and the t (laid over it, hidden).
+// The p fades out as the t fades in and the slot narrows to the t's width, so "Stellar" closes up
+// like a word set that way; a moment later it turns back.
+export function buildTitleSwap({ slot, p, t }, vars = {}) {
+  const gsap = engine();
+  const wide = slot.getBoundingClientRect().width;
+  const narrow = t.getBoundingClientRect().width;
+  const back = T.swap + T.swapHold;
+  return gsap
+    .timeline(vars)
+    .set(slot, { width: wide }, 0)
+    .to(slot, { width: narrow, duration: T.swap, ease: 'power2.inOut' }, 0)
+    .to(p, { autoAlpha: 0, duration: T.swap * 0.7, ease: 'sine.in' }, 0)
+    .to(t, { autoAlpha: 1, duration: T.swap * 0.7, ease: 'sine.out' }, T.swap * 0.3)
+    .to(slot, { width: wide, duration: T.swap, ease: 'power2.inOut' }, back)
+    .to(t, { autoAlpha: 0, duration: T.swap * 0.7, ease: 'sine.in' }, back)
+    .to(p, { autoAlpha: 1, duration: T.swap * 0.7, ease: 'sine.out' }, back + T.swap * 0.3)
+    .set(slot, { clearProps: 'width' })
+    .set([p, t], { clearProps: 'opacity,visibility' });
+}
+
+// First a few seconds after the page opens, then every 25 to 45 s while the page is in view.
+// Never with reduced motion: the title then always reads "Spellar".
+export function titleSwaps(title) {
+  if (prefersReducedMotion()) return;
+  const [min, max] = T.swapEvery;
+  const later = (s) => setTimeout(run, s * 1000);
+  function run() {
+    if (!document.hidden && engine()) buildTitleSwap(title);
+    later(min + Math.random() * (max - min));
+  }
+  later(T.swapFirst);
 }

@@ -31,7 +31,6 @@ export function createBoard(cols, rows) {
     rowEls.push(row);
   }
   const sky = s('svg', { class: 'sp-sky', 'aria-hidden': 'true', focusable: 'false' });
-  const scan = h('div', { class: 'sp-scan', 'aria-hidden': 'true' });
-  const wrap = h('div', { class: 'sp-board-wrap' }, board, sky, scan);
-  return { wrap, board, rows: rowEls, tiles, sky, scan };
+  const wrap = h('div', { class: 'sp-board-wrap' }, board, sky);
+  return { wrap, board, rows: rowEls, tiles, sky };
 }

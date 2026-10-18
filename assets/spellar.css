@@ -5,7 +5,7 @@
  * inherited font, colour or spacing leaks in from the page.
  *
  * Visual grammar (docs: SPELLAR brief §6.1): rectangles (tiles, keys), dots and rings (stars),
- * hairlines (constellation and scan line) and type. Black ink, SEDS red only for letter states and
+ * hairlines (constellation), the reveal's star and type. Black ink, SEDS red only for letter states and
  * stars, one grey for "not in word". No gradients that fade, no shadows, no decoration.
  */
 
@@ -43,13 +43,16 @@
   /* Tile size: as large as fits both the width and the height left after everything else on a
      first screen, between 28 px and 56 px. Height budget, top to bottom: the site's header
      (--sp-above, not sticky, 64 px on phones), wordmark and tagline (64), gap (14), legend (34),
-     keyboard (3 rows + 12), bottom (4). --cols and --rows are set by the script. */
+     keyboard (3 rows + 12), bottom (4). --cols and --rows are set by the script.
+     --sp-room is height to spare even with the largest tiles; it stays 0 on phones (and on short
+     laptop screens), and wider screens share it out as space around the wordmark (below). */
   --cols: 5;
   --rows: 6;
   --sp-gap: 5px;
   --sp-above: 64px;
   --sp-key-h: clamp(42px, 6.8vh, 58px);
-  --sp-chrome: calc(var(--sp-above) + 128px + 3 * var(--sp-key-h));
+  --sp-room: 0px;
+  --sp-chrome: calc(var(--sp-above) + 128px + 3 * var(--sp-key-h) + 0.57 * var(--sp-room));
   --sp-tile-w: calc((100vw - 32px - (var(--cols) - 1) * var(--sp-gap)) / var(--cols));
   --sp-tile-h: calc((100vh - var(--sp-chrome) - (var(--rows) - 1) * var(--sp-gap)) / var(--rows));
   --sp-tile: clamp(28px, min(var(--sp-tile-w), var(--sp-tile-h)), 56px);
@@ -70,6 +73,23 @@
 @media (min-width: 1100px) {
   #spellar-root {
     --sp-above: 76px;
+  }
+}
+
+/* Wider than a phone: the height left over with 56 px tiles on the day's board, up to 160 px, goes
+   to space above the wordmark (20%), a larger wordmark (15%), the tagline (7%) and space above the
+   board (15%): 57% in all, which --sp-chrome adds back, so the tiles stay at 56 px. */
+@media (min-width: 600px) {
+  #spellar-root {
+    --sp-room: clamp(0px, 100vh - var(--sp-above) - 128px - 3 * var(--sp-key-h) - var(--rows) * 56px - (var(--rows) - 1) * var(--sp-gap), 160px);
+  }
+}
+
+@supports (height: 1dvh) {
+  @media (min-width: 600px) {
+    #spellar-root {
+      --sp-room: clamp(0px, 100dvh - var(--sp-above) - 128px - 3 * var(--sp-key-h) - var(--rows) * 56px - (var(--rows) - 1) * var(--sp-gap), 160px);
+    }
   }
 }
 
@@ -146,9 +166,11 @@
 
 /* ---- Wordmark and tagline ---- */
 
+/* The spare height's shares (see --sp-room) add up to its 42% here: 20% above, 15% on the
+   wordmark's size (its line height is 1), 5% between it and the tagline, 2% on the tagline. */
 #spellar-root .sp-head {
-  height: 64px;
-  padding-top: 8px;
+  height: calc(64px + 0.42 * var(--sp-room));
+  padding-top: calc(8px + 0.2 * var(--sp-room));
   text-align: center;
 }
 
@@ -157,7 +179,7 @@
   align-items: baseline;
   justify-content: center;
   gap: 0.32em;
-  font: 600 clamp(32px, 9cqi, 44px) / 1 var(--sp-serif);
+  font: 600 calc(clamp(32px, 9cqi, 44px) + 0.15 * var(--sp-room)) / 1 var(--sp-serif);
   color: var(--sp-ink);
 }
 
@@ -173,31 +195,34 @@
   letter-spacing: 0.005em;
 }
 
-/* The t sits exactly on the p: in this font both stems are the same distance from the glyph's
-   start, so the t starts where the p starts (measured; DECISIONS.md). */
-#spellar-root .sp-p {
+/* The p and the t share one slot. The p sets its width; the t waits, hidden, centred over it.
+   The title swap (motion.js) fades one into the other and narrows the slot to the t's width; the
+   centring lets the fading p overflow evenly on both sides while it does. */
+#spellar-root .sp-pt {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  justify-content: center;
 }
 
 #spellar-root .sp-t {
   position: absolute;
-  left: 0;
+  left: 50%;
   top: 0;
-  color: var(--sp-red);
-  opacity: 0.45;
+  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
 }
 
 #spellar-root .sp-tagline {
-  margin-top: 4px;
-  font: 400 clamp(12px, 4.1cqi, 14px) / 1.25 var(--sp-sans);
+  margin-top: calc(4px + 0.05 * var(--sp-room));
+  font: 400 calc(clamp(12px, 4.1cqi, 14px) + 0.016 * var(--sp-room)) / 1.25 var(--sp-sans);
 }
 
 /* ---- Play area ---- */
 
 #spellar-root .sp-play {
   position: relative;
-  margin-top: 14px;
+  margin-top: calc(14px + 0.15 * var(--sp-room));
 }
 
 #spellar-root .sp-board-wrap {
@@ -277,7 +302,23 @@
   flex: none;
 }
 
-/* The constellation and the scan line sit on top of the board. */
+/* The reveal's cover: a copy of the tile in its new state, laid over the whole tile (the typed
+   tile's 2.5 px border included) and clipped to a growing star by motion.js. */
+#spellar-root .sp-cover {
+  position: absolute;
+  inset: -2.5px;
+  z-index: 1;
+  width: auto;
+  height: auto;
+  pointer-events: none;
+}
+
+/* A wrong-spot cover's white square opens from nothing (--sp-open 0) to its full size (1). */
+#spellar-root .sp-cover[data-state="present"]::before {
+  transform: scale(var(--sp-open, 1));
+}
+
+/* The constellation sits on top of the board. */
 #spellar-root .sp-sky {
   position: absolute;
   left: 0;
@@ -304,17 +345,6 @@
   fill: none;
   stroke: var(--sp-red);
   stroke-width: 1.5;
-}
-
-#spellar-root .sp-scan {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 1.5px;
-  background: var(--sp-ink);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
 }
 
 /* End state: the board stays faintly visible as the sky behind the constellation. */

@@ -21,6 +21,7 @@ npx playwright test              # unit and browser tests (starts the mock serve
 
 - `dev/sandbox.html` (on the mock server): scrub each animation with GSDevTools.
 - `node dev/screens.mjs` and `node dev/frames.mjs`: screenshots and motion contact sheets in `docs/screens/`.
+- `node dev/perf.mjs [--phone]`: how long a first visit to the live page takes, and where the time goes.
 - The PHP side, in a throwaway local WordPress (WordPress Playground, no PHP install needed):
 
 ```bash

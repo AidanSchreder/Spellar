@@ -26,8 +26,9 @@ export function markVisited(today) {
 }
 
 // Set when today's puzzle is finished; the dot then hides for the rest of the day.
+// (.spellar-dot: the element an earlier version added, still in pages cached before it changed.)
 export function markPlayed(today) {
   const dot = read();
   write({ firstVisit: dot.firstVisit || today, lastPlayed: today });
-  for (const el of document.querySelectorAll('.spellar-dot')) el.remove();
+  for (const el of document.querySelectorAll('#spellar-dot-style, .spellar-dot')) el.remove();
 }

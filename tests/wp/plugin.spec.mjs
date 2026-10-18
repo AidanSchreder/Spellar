@@ -6,7 +6,7 @@
 
 import { test, expect } from '@playwright/test';
 import { loadSchedule, loadWords, addDays } from '../../bin/lib/data.mjs';
-import { puzzleFor, decode, maxAgeFor, utcDate } from '../../bin/lib/puzzle.mjs';
+import { puzzleFor, pageDays, decode, maxAgeFor, utcDate } from '../../bin/lib/puzzle.mjs';
 
 const BASE = process.env.SPELLAR_WP_URL;
 test.skip(!BASE, 'set SPELLAR_WP_URL to a WordPress with the plugin active');
@@ -18,19 +18,38 @@ const words = loadWords();
 test.describe('assets load only where the game is', () => {
   test('the game page has the root, its files, the early fetch and the font preload', async ({ request }) => {
     const html = await (await request.get(`${BASE}/spellar/`)).text();
-    expect(html).toMatch(/<div class="spellar" id="spellar-root" data-api="[^"]+\/wp-json\/spellar\/v1\/" data-guesses="[^"]+data\/guesses\.txt\?ver=\d+"><\/div>/);
+    expect(html).toMatch(/<div class="spellar" id="spellar-root" data-api="[^"]+\/wp-json\/spellar\/v1\/" data-guesses="[^"]+data\/guesses\.txt\?ver=\d+" data-days="[^"]+"><\/div>/);
     expect(html).toContain('spellarEarly');
     expect(html).toMatch(/assets\/spellar\.css\?ver=\d+/);
-    expect(html).toMatch(/assets\/vendor\/gsap\.min\.js\?ver=\d+/);
-    const tag = html.match(/<script[^>]*assets\/spellar\.js\?ver=\d+[^>]*>/);
-    expect(tag && tag[0]).toMatch(/\bdefer\b/);
+    const head = html.slice(0, html.indexOf('</head>'));
+    // The game's script: async, in <head>, so it starts the game as soon as it arrives.
+    const tag = head.match(/<script[^>]*assets\/spellar\.js\?ver=\d+[^>]*>/);
+    expect(tag && tag[0]).toMatch(/\basync\b/);
+    expect(tag[0]).not.toMatch(/\bdefer\b/);
     expect(tag[0]).toContain('data-wpacu-skip'); // keeps Asset CleanUp from combining it
+    // GSAP and DrawSVG: deferred, in that order, after the page.
+    const gsap = html.match(/<script[^>]*assets\/vendor\/gsap\.min\.js\?ver=\d+[^>]*>/);
+    const draw = html.match(/<script[^>]*assets\/vendor\/DrawSVGPlugin\.min\.js\?ver=\d+[^>]*>/);
+    expect(gsap && gsap[0]).toMatch(/\bdefer\b/);
+    expect(draw && draw[0]).toMatch(/\bdefer\b/);
+    expect(gsap.index).toBeLessThan(draw.index);
     expect(html).toMatch(/rel="preload" href="[^"]+cormorant-garamond-600\.woff2" as="font"/);
-    expect(html).toContain('<script id="spellar-dot">');
+    expect(head).toContain('<script id="spellar-dot">');
   });
 
-  test('any other page gets only the inline menu-dot script', async ({ request }) => {
+  test("the page carries the puzzles for the UTC yesterday, today and tomorrow, as the puzzle route gives them", async ({ request }) => {
+    const html = await (await request.get(`${BASE}/spellar/`)).text();
+    const attr = html.match(/data-days="([^"]+)"/)[1].replaceAll('&quot;', '"').replaceAll('&amp;', '&');
+    const days = JSON.parse(attr);
+    expect(days).toEqual(pageDays({ schedule, words, nowMs: Date.now() }));
+    for (const [date, body] of Object.entries(days)) {
+      expect(body).toEqual(await (await request.get(`${API}/puzzle?date=${date}`)).json());
+    }
+  });
+
+  test('any other page gets only the inline menu-dot script, in <head>', async ({ request }) => {
     const html = await (await request.get(`${BASE}/`)).text();
+    expect(html.indexOf('<script id="spellar-dot">')).toBeLessThan(html.indexOf('</head>'));
     expect(html).not.toContain('spellar.css');
     expect(html).not.toContain('spellar.js');
     expect(html).not.toContain('gsap.min.js');
@@ -48,9 +67,14 @@ test.describe('GET /puzzle', () => {
   test('matches the JavaScript twin for yesterday, today and tomorrow (UTC)', async ({ request }) => {
     for (const date of [addDays(today, -1), today, addDays(today, 1)]) {
       const res = await request.get(`${API}/puzzle?date=${date}`);
-      expect(res.status(), date).toBe(200);
-      const body = await res.json();
       const twin = puzzleFor({ schedule, words, date, nowMs: Date.now() });
+      // 200 for every date from the launch on; 404 for a date before it (launch day's "yesterday").
+      expect(res.status(), date).toBe(twin.status);
+      const body = await res.json();
+      if (twin.status !== 200) {
+        expect(body.code).toBe(twin.body.code);
+        continue;
+      }
       expect(body).toEqual(twin.body);
       expect(decode(body.answer, date)).toBe(schedule.days[date]);
     }
@@ -97,7 +121,7 @@ test.describe('POST /event', () => {
     const kinds = [
       { type: 'start', number: n, returning_d1: false, veteran: true },
       { type: 'finish', number: n, won: true, guesses: 3 },
-      { type: 'finish', number: n - 1, won: false, guesses: 6 },
+      { type: 'finish', number: Math.max(1, n - 1), won: false, guesses: 6 }, // no puzzle #0 on launch day
       { type: 'share', number: n + 1 },
       { type: 'french_click' },
     ];

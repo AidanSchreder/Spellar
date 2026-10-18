@@ -2,19 +2,24 @@
 
 import { h } from './dom.js';
 
-// "Spellar", with a red t over the p so a second look reads "Stellar" (docs/screens/wordmark-a.png).
+// "Spellar". The p and a hidden t share one slot: now and then the p fades into the t for a moment,
+// so the word shows its other side, "Stellar" (motion.js, titleSwaps).
 export function createHeader() {
-  return h(
+  const p = h('span', { class: 'sp-p' }, 'p');
+  const t = h('span', { class: 'sp-t' }, 't');
+  const slot = h('span', { class: 'sp-pt' }, p, t);
+  const el = h(
     'header',
     { class: 'sp-head' },
     h(
       'h1',
       { class: 'sp-mark', 'aria-label': 'SEDS Spellar' },
       h('span', { class: 'sp-seds', 'aria-hidden': 'true' }, 'SEDS'),
-      h('span', { class: 'sp-word', 'aria-hidden': 'true' }, 'S', h('span', { class: 'sp-p' }, 'p', h('span', { class: 'sp-t' }, 't')), 'ellar'),
+      h('span', { class: 'sp-word', 'aria-hidden': 'true' }, 'S', slot, 'ellar'),
     ),
     h('p', { class: 'sp-tagline' }, 'includes ships, space related stuff, astronomy, and more!'),
   );
+  return { el, title: { slot, p, t } };
 }
 
 export function swatch(state) {

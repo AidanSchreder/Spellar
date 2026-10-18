@@ -73,6 +73,18 @@ export function puzzleFor({ schedule, words, date, nowMs }) {
   };
 }
 
+// What the game's page carries (spellar_page_days() in includes/rest.php): the puzzles for the
+// UTC yesterday, today and tomorrow, keyed by date, leaving out any date with no puzzle.
+export function pageDays({ schedule, words, nowMs }) {
+  const days = {};
+  for (const offset of [-1, 0, 1]) {
+    const date = new Date(nowMs + offset * 864e5).toISOString().slice(0, 10);
+    const result = puzzleFor({ schedule, words, date, nowMs });
+    if (result.status === 200) days[date] = result.body;
+  }
+  return days;
+}
+
 /* ---- Events ---- */
 
 export const EVENT_TYPES = ['start', 'finish', 'share', 'french_click'];

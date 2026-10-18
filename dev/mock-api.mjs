@@ -12,7 +12,7 @@ import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import * as esbuild from 'esbuild';
 import { ROOT, addDays, daysBetween, loadSchedule, loadWords } from '../bin/lib/data.mjs';
-import { DAILY_EVENT_LIMIT, metricsFor, puzzleFor, utcDate } from '../bin/lib/puzzle.mjs';
+import { DAILY_EVENT_LIMIT, metricsFor, pageDays, puzzleFor, utcDate } from '../bin/lib/puzzle.mjs';
 
 const PORT = Number(process.env.PORT || 8780);
 const API = '/wp-json/spellar/v1/';
@@ -49,7 +49,11 @@ function harness(url) {
   // The same markup the [spellar] shortcode prints, plus the dev page around it.
   const early = readFileSync(join(ROOT, 'assets', 'early.js'), 'utf8');
   const version = String(statSync(join(ROOT, 'assets', 'spellar.js')).mtimeMs | 0);
-  const root = `<div class="spellar" id="spellar-root" data-api="${API}" data-guesses="/data/guesses.txt?ver=${version}"></div>\n<script>${early}</script>`;
+  // ?days=none leaves the days' puzzles out, like an old saved copy of the page (the game then
+  // asks the puzzle route).
+  const days = url.searchParams.get('days') === 'none' ? {} : pageDays({ schedule: loadSchedule(), words: loadWords(), nowMs: now() });
+  const attr = JSON.stringify(days).replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+  const root = `<div class="spellar" id="spellar-root" data-api="${API}" data-guesses="/data/guesses.txt?ver=${version}" data-days="${attr}"></div>\n<script>${early}</script>`;
   return readFileSync(join(ROOT, 'dev', 'harness.html'), 'utf8')
     .replace('<!-- SPELLAR -->', root)
     .replaceAll('{{ver}}', version)
@@ -67,7 +71,16 @@ const server = createServer(async (req, res) => {
   }
 
   if (path === '/' || path === '/harness') {
-    return send(res, 200, harness(url), { 'Content-Type': TYPES['.html'], 'Cache-Control': 'no-store' });
+    const html = harness(url);
+    const stall = Number(url.searchParams.get('stall')) || 0;
+    if (!stall) return send(res, 200, html, { 'Content-Type': TYPES['.html'], 'Cache-Control': 'no-store' });
+    // ?stall=MS sends the page up to <main>, waits, then sends the rest: the game's script (async,
+    // in <head>) then runs before the page has reached the game's root, as on a long, slow page.
+    const at = html.indexOf('<main>');
+    res.writeHead(200, { 'Content-Type': TYPES['.html'], 'Cache-Control': 'no-store' });
+    res.write(html.slice(0, at));
+    setTimeout(() => res.end(html.slice(at)), stall);
+    return;
   }
 
   if (path === `${API}puzzle` && req.method === 'GET') {

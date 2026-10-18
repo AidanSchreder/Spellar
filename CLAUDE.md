@@ -65,13 +65,21 @@ the game first goes public and must never be used after that.
   Take a fresh one before any database write: `wp db export - | gzip > ~/backups/seds-$(date +%F-%H%M).sql.gz`.
 - Activating or deactivating any plugin, or saving a menu, clears every saved page of the site's
   page cache; the site's timer refills the menu's pages within about 40 minutes.
-- **Asset CleanUp** (another plugin, "combine JS" on) reuses a cached combine list per page for 24 h.
-  The game's tags carry `data-wpacu-skip` so it leaves them alone once that list renews; after a
-  deploy, `tests/live` checks that GSAP, DrawSVG and the game still load, in order.
+- **Asset CleanUp** (another plugin, "combine JS" on) keeps a combine list per page. The game's
+  tags carry `data-wpacu-skip`, so a fresh list leaves them alone. A list made before a file
+  changed is deleted by the first render after the deploy, which can still carry the old combined
+  file, so `deploy.sh` clears that copy from the page cache and renders the page again.
+  `tests/live` checks the game's script loads async from `<head>`, GSAP and DrawSVG deferred, and
+  none of them combined.
+- **The game page carries the puzzles** for the server's UTC yesterday, today and tomorrow
+  (`data-days` on the root), so the board never waits on WordPress. That covers every time zone
+  while a saved copy is under ~10 h old (the page cache keeps copies 8 h); an older copy falls
+  back to the slow REST route. If the page cache's expiry is ever raised, keep this in mind.
 - Remove the menu item: `wp menu item delete 32501`. Unpublish the page: `wp post update 32499 --post_status=draft`.
 - Checks against the live page (analytics intercepted, nothing is counted):
   `SPELLAR_LIVE_URL=https://www.seds.ca npx playwright test --project=live` (run it sparingly: the
-  host is slow when several WordPress requests queue up).
+  host is slow when several WordPress requests queue up). `node dev/perf.mjs [--phone]` times a
+  first visit to the live page and lists where the time went.
 
 ## Reading stats
 
@@ -98,7 +106,8 @@ sheets; the PHP side runs in WordPress Playground (commands in `README.md`).
   inline, under 1 KB); touch nothing else on the site; mobile first (a 7×7 board and the keyboard
   fit a 360×640 phone); accessibility (state never by colour alone, screen-reader labels and live
   announcements, keyboard play, reduced motion).
-- **Visual grammar**: rectangles (tiles, keys), dots and rings (stars), hairlines (constellation,
-  scan line) and type; black ink, SEDS red `#ED2839` only for letter states and stars, one grey
+- **Visual grammar**: rectangles (tiles, keys), dots and rings (stars), hairlines (constellation),
+  the reveal's star and type; black ink, SEDS red `#ED2839` only for letter states and stars, one grey
   for "not in word". Every element on screen represents game state (`docs/visual-inventory.md`).
-  Only four things move: letter pop, scan reveal, invalid shake, constellation.
+  Only five things move: letter pop, star reveal, invalid shake, constellation, and the title's
+  occasional p → t swap (the last two by Aidan's later request; DECISIONS.md, 2026-10-18).

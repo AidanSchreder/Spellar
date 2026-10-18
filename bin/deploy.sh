@@ -91,6 +91,12 @@ if [ -n "$ERRORS" ]; then
 fi
 echo "No PHP errors mentioning Spellar."
 
-# Saved copies of the game page may name the previous asset versions.
+# Saved copies of the game page may name the previous asset versions. Asset CleanUp also keeps a
+# combine list for the page; when spellar.js has changed, the first render after the deploy
+# deletes that list but can still carry the old combined file (DECISIONS.md, 2026-10-18). So
+# render the page once, clear that copy too, and render it again from a fresh list.
 wp spellar flush-page || true
+curl -s -o /dev/null "$URL/spellar/"
+wp spellar flush-page || true
+curl -s -o /dev/null "$URL/spellar/"
 echo "Deployed."

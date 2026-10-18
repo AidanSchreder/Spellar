@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Frame-by-frame review of the four motion moments. Drives the real game in the harness with
+// Frame-by-frame review of the motion moments. Drives the real game in the harness with
 // Playwright's fake clock (it also fakes requestAnimationFrame, so GSAP can be stepped exactly),
 // captures frames at fixed intervals, and lays them out as contact sheets:
 //   docs/screens/motion-<moment>-<size>.png
 // With --video it also records each moment in real time to dev/out/recordings/.
 //
-//   node dev/frames.mjs [--video] [--only=pop,shake,reveal,finale,loss]
+//   node dev/frames.mjs [--video] [--only=pop,shake,reveal,finale,loss,title]
 
 import { chromium } from '@playwright/test';
 import { mkdirSync, readdirSync, renameSync } from 'node:fs';
@@ -21,7 +21,7 @@ const SIZES = { mobile: { width: 375, height: 812, dpr: 2 }, desktop: { width: 1
 const WIN_DAY = '2026-11-16T15:00:00Z'; // ARTEMIS, 7 letters
 const LOSS_DAY = '2026-10-22T14:00:00Z'; // CYCLE, 5 letters
 
-async function open(browser, size, instant, { video } = {}) {
+async function open(browser, size, instant, { video, pauseAfter = 60_000 } = {}) {
   const ctx = await browser.newContext({
     viewport: { width: size.width, height: size.height },
     deviceScaleFactor: size.dpr,
@@ -37,7 +37,7 @@ async function open(browser, size, instant, { video } = {}) {
   await page.goto(BASE);
   await page.locator('#spellar-root .sp-board').waitFor();
   await page.evaluate(() => document.fonts.ready);
-  if (!video) await page.clock.pauseAt(new Date(Date.parse(instant) + 60_000));
+  if (!video) await page.clock.pauseAt(new Date(Date.parse(instant) + pauseAfter));
   return { ctx, page };
 }
 
@@ -108,6 +108,15 @@ for (const [size, dims] of Object.entries(SIZES)) {
     const times = [];
     for (let ms = 0; ms <= 1300; ms += 50) times.push(ms);
     await sheet(browser, `reveal-${size}`, await capture(page, pad(t, 10), times), 4);
+    await ctx.close();
+  }
+  if (run('title')) {
+    // The first swap comes 5 s after the page opens: pause just before it.
+    const { ctx, page } = await open(browser, dims, WIN_DAY, { pauseAfter: 4_800 });
+    const t = await box(page, '#spellar-root .sp-mark');
+    const times = [];
+    for (let ms = 0; ms <= 3000; ms += 100) times.push(ms);
+    await sheet(browser, `title-${size}`, await capture(page, pad(t, 8), times), size === 'mobile' ? 6 : 5);
     await ctx.close();
   }
   for (const [moment, day, words] of [

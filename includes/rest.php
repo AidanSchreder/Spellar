@@ -57,36 +57,69 @@ function spellar_max_age( $date, $now ) {
 	return max( 0, spellar_date_ts( $date ) + 10 * HOUR_IN_SECONDS - $now ); // (date + 1) 00:00 at UTC+14 = date 10:00 UTC
 }
 
-function spellar_rest_puzzle( WP_REST_Request $request ) {
-	$date = $request->get_param( 'date' );
+/**
+ * The puzzle for a date, exactly as GET /puzzle sends it, or a WP_Error (with an HTTP status in its
+ * data) saying why there is none. The game's page carries the same data for the days around today
+ * (spellar_page_days()).
+ *
+ * @return array|WP_Error
+ */
+function spellar_puzzle_data( $date ) {
 	if ( ! spellar_is_date( $date ) ) {
-		return spellar_rest_error( 400, 'spellar_bad_date', 'date must be YYYY-MM-DD.' );
+		return new WP_Error( 'spellar_bad_date', 'date must be YYYY-MM-DD.', array( 'status' => 400 ) );
 	}
 	if ( abs( spellar_days_between( spellar_utc_today(), $date ) ) > 1 ) {
-		return spellar_rest_error( 400, 'spellar_date_out_of_range', 'date must be within one day of today.' );
+		return new WP_Error( 'spellar_date_out_of_range', 'date must be within one day of today.', array( 'status' => 400 ) );
 	}
 	$schedule = spellar_schedule();
 	if ( $schedule && spellar_days_between( $schedule['launch'], $date ) < 0 ) {
 		// A player still on the day before launch (far-west time zones on launch day).
-		return spellar_rest_error( 404, 'spellar_not_started', 'Spellar starts on ' . $schedule['launch'] . '.' );
+		return new WP_Error( 'spellar_not_started', 'Spellar starts on ' . $schedule['launch'] . '.', array( 'status' => 404 ) );
 	}
 	$word = spellar_word_for( $date );
 	if ( ! $schedule || ! $word ) {
-		return spellar_rest_error( 503, 'spellar_no_puzzle', 'No puzzle is available.' );
+		return new WP_Error( 'spellar_no_puzzle', 'No puzzle is available.', array( 'status' => 503 ) );
+	}
+	$length = strlen( $word['word'] );
+	return array(
+		'number'     => spellar_puzzle_number( $date, $schedule ),
+		'length'     => $length,
+		'maxGuesses' => $length <= 5 ? 6 : 7,
+		'answer'     => spellar_encode( $word['word'], $date ),
+		'fact'       => spellar_encode( $word['fact'], $date ),
+		'pinned'     => $word['pinned'],
+	);
+}
+
+/**
+ * The puzzles for the server's yesterday, today and tomorrow (UTC), keyed by date: the same data
+ * GET /puzzle gives for those dates, which it would serve anyway. Every time zone's local date is
+ * one of the three for as long as a saved copy of the page is under 10 hours old (the page cache
+ * keeps copies for 8), so the game starts without asking WordPress anything; when a copy is
+ * older, the player's date is missing and the game falls back to GET /puzzle.
+ */
+function spellar_page_days() {
+	$days  = array();
+	$today = spellar_utc_today();
+	foreach ( array( -1, 0, 1 ) as $offset ) {
+		$date = spellar_add_days( $today, $offset );
+		$data = spellar_puzzle_data( $date );
+		if ( ! is_wp_error( $data ) ) {
+			$days[ $date ] = $data;
+		}
+	}
+	return $days;
+}
+
+function spellar_rest_puzzle( WP_REST_Request $request ) {
+	$date = $request->get_param( 'date' );
+	$data = spellar_puzzle_data( $date );
+	if ( is_wp_error( $data ) ) {
+		$status = $data->get_error_data();
+		return spellar_rest_error( $status['status'], $data->get_error_code(), $data->get_error_message() );
 	}
 
-	$length   = strlen( $word['word'] );
-	$response = new WP_REST_Response(
-		array(
-			'number'     => spellar_puzzle_number( $date, $schedule ),
-			'length'     => $length,
-			'maxGuesses' => $length <= 5 ? 6 : 7,
-			'answer'     => spellar_encode( $word['word'], $date ),
-			'fact'       => spellar_encode( $word['fact'], $date ),
-			'pinned'     => $word['pinned'],
-		),
-		200
-	);
+	$response = new WP_REST_Response( $data, 200 );
 	// Cacheable until the date ends in UTC+14. An Expires header is sent too: the host's own
 	// expiry rules leave a response alone only when it already has one.
 	$now     = time();

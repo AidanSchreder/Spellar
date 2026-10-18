@@ -67,14 +67,14 @@ test.describe('stats and streaks', () => {
 });
 
 test.describe('share text', () => {
-  test('matches the brief, never the answer', () => {
+  test('one star character per letter, never the answer', () => {
     const text = shareText({
       number: 12,
       maxGuesses: 6,
       won: true,
       rows: [[C, P, A, A, A], [C, C, A, A, C], [C, C, A, C, C], [C, C, C, C, C]],
     });
-    expect(text).toBe('Spellar #12 4/6\n★✦···\n★★··★\n★★·★★\n★★★★★\nseds.ca/spellar');
+    expect(text).toBe('Spellar #12 4/6\n★✦☆☆☆\n★★☆☆★\n★★☆★★\n★★★★★\nseds.ca/spellar');
   });
 
   test('a loss scores ✕', () => {
@@ -86,7 +86,7 @@ test.describe('share text', () => {
 
   test('uses only characters that have no emoji presentation', () => {
     // Emoji_Presentation characters would render as pictures on phones.
-    for (const ch of ['★', '✦', '·', '✕']) expect(/\p{Emoji_Presentation}/u.test(ch)).toBe(false);
+    for (const ch of ['★', '✦', '☆', '✕']) expect(/\p{Emoji_Presentation}/u.test(ch)).toBe(false);
   });
 });
 

@@ -5,7 +5,7 @@ list, checked at the end of each phase against the screenshots in `docs/screens/
 
 | Element | What it represents |
 |---|---|
-| Wordmark (SEDS + Spellar, red t over the p) | Identity. Static; the brief places it outside the motion budget. |
+| Wordmark (SEDS + Spellar) | Identity. Now and then the p turns into a t for a moment ("Stellar"), the other side of the name. |
 | Tagline | Brief-mandated text: what the answers can be. |
 | Empty tile, 1.5 px outline | A letter not yet typed. |
 | Typed tile, 2.5 px outline | A letter typed but not submitted. |
@@ -18,7 +18,7 @@ list, checked at the end of each phase against the screenshots in `docs/screens/
 | Keys: outline / grey / hatch / red | What the player knows about each letter (unknown, absent, wrong spot, correct). |
 | Enter, Delete keys | Input actions. |
 | Toast | Why a guess was refused, or that the share text was copied. |
-| Scan line (Phase 4) | A guess being checked, letter by letter. |
+| Growing star over a tile | That tile's result being revealed, letter by letter. |
 | Faded board (14%) | The finished game, kept as the sky behind the constellation. |
 | Red star with white ring | A letter position solved, on the row it was first solved. |
 | Hollow red ring | A letter position never solved (loss). |
@@ -26,7 +26,7 @@ list, checked at the end of each phase against the screenshots in `docs/screens/
 | Answer label (spaced serif capitals) | The answer. |
 | Fact | The answer's space fact. |
 | Stats numbers and labels | Played, win %, streak, max streak. |
-| Distribution bars | Wins by number of guesses; the filled bar is today's result. |
+| Distribution bars (Stats dialog only) | Wins by number of guesses; the filled bar is today's result. |
 | Share button | Action: share the result. |
 | "Next Spellar in …" | Time until the next puzzle. |
 | Footer: How to play, Stats, Français | Actions. |
