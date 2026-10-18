@@ -14,7 +14,8 @@ export async function openOn(page, local, { utc, reset = true, path = '/' } = {}
   const instant = utc || new Date(`${local}-04:00`).toISOString();
   await page.request.post('/dev/now', { data: { now: instant } });
   if (reset) await page.request.post('/dev/reset');
-  await page.clock.setFixedTime(new Date(instant));
+  // A fake clock that keeps running from that moment (a frozen one would stop GSAP's animations).
+  await page.clock.install({ time: new Date(instant) });
   await page.goto(path);
   await expect(page.locator('#spellar-root .sp-board, #spellar-root .sp-error')).toBeVisible();
 }
@@ -22,6 +23,9 @@ export async function openOn(page, local, { utc, reset = true, path = '/' } = {}
 export async function typeWord(page, word) {
   await page.keyboard.type(word.toLowerCase());
   await page.keyboard.press('Enter');
+  // Input is locked while a row is revealed (the board is aria-busy): wait for it to finish.
+  await page.waitForTimeout(30);
+  await expect(page.locator('#spellar-root .sp-board[aria-busy]')).toHaveCount(0, { timeout: 5000 });
 }
 
 export async function stats(page) {

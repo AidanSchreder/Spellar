@@ -336,12 +336,13 @@
 
 /* ---- Toast ---- */
 
+/* Over the tagline, just above the board, so it never covers the row being guessed. */
 #spellar-root .sp-toast {
   position: absolute;
   left: 50%;
-  top: 6px;
+  top: -6px;
   z-index: 3;
-  transform: translateX(-50%);
+  transform: translate(-50%, -100%);
   padding: 9px 14px;
   background: var(--sp-ink);
   color: #fff;

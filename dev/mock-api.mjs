@@ -10,9 +10,9 @@
 import { createServer } from 'node:http';
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
-import { ROOT, loadSchedule, loadWords } from '../bin/lib/data.mjs';
+import * as esbuild from 'esbuild';
+import { ROOT, addDays, daysBetween, loadSchedule, loadWords } from '../bin/lib/data.mjs';
 import { DAILY_EVENT_LIMIT, metricsFor, puzzleFor, utcDate } from '../bin/lib/puzzle.mjs';
-import { daysBetween, addDays } from '../bin/lib/data.mjs';
 
 const PORT = Number(process.env.PORT || 8780);
 const API = '/wp-json/spellar/v1/';
@@ -59,6 +59,12 @@ function harness(url) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const path = decodeURIComponent(url.pathname);
+
+  if (path === '/dev/sandbox.js') {
+    // The motion sandbox is bundled from src/ on each request, so it always matches the source.
+    const out = await esbuild.build({ entryPoints: [join(ROOT, 'dev', 'sandbox-entry.js')], bundle: true, write: false, format: 'iife' });
+    return send(res, 200, out.outputFiles[0].text, { 'Content-Type': TYPES['.js'], 'Cache-Control': 'no-store' });
+  }
 
   if (path === '/' || path === '/harness') {
     return send(res, 200, harness(url), { 'Content-Type': TYPES['.html'], 'Cache-Control': 'no-store' });

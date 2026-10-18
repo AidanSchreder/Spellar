@@ -241,6 +241,7 @@ export function createGame(root, config) {
       store.update((s) => s.game.guesses.push(guess));
       results.push(res);
 
+      board.board.setAttribute('aria-busy', 'true'); // the row is being revealed; input is locked
       await motion.reveal({
         row: board.rows[r],
         tiles: board.tiles[r],
@@ -248,6 +249,7 @@ export function createGame(root, config) {
         count: cols,
         apply: (i) => setTile(board.tiles[r][i], guess[i], res[i]),
       });
+      board.board.removeAttribute('aria-busy');
       mergeKeyStates(keys, guess, res);
       for (const [k, v] of Object.entries(keys)) keyboard.setState(k, v);
       announce(`Guess ${r + 1} of ${rows}: ` + [...guess].map((c, i) => `${c} ${STATE_LABEL[res[i]]}`).join(', ') + '.');
@@ -395,9 +397,8 @@ export function createGame(root, config) {
       countdownTimer = setInterval(tick, 15000);
     }
 
-    // Any tap or key during the end sequence skips straight to its end.
-    const skip = () => finale && motion.skip();
-    root.addEventListener('pointerdown', skip);
+    // A tap anywhere on the page, or any key, during the end sequence skips straight to its end.
+    document.addEventListener('pointerdown', () => finale && motion.skip());
 
     function onKeydown(e) {
       if (finale) return void motion.skip();

@@ -51,3 +51,12 @@ what the brief left open and what was found on the site.
 - **No menu dot when browser storage is blocked** — the script cannot tell a new visitor from a regular, and a dot that never goes away would be worse than none.
 - **On phones (coarse pointer) Share uses the system share sheet; elsewhere it copies** and shows "Copied", as the brief asks.
 - **Event dates**: start, finish and share are counted on the puzzle's date (so a row of the stats table is one puzzle); Français clicks on the server's UTC date.
+
+## Motion
+
+- **Timings are the brief's starting values, unchanged after review** — all in one table at the top of `src/motion.js` (`T`). Review notes: `docs/motion-review.md`.
+- **The toast sits above the board**, over the tagline, so it never covers the row being guessed (it did, in the first review pass).
+- **When the game ends the keyboard and legend go at once**, leaving the board alone for the constellation; the results set in below it. No extra animation, since the brief allows only the four moments.
+- **Typing during a reveal is ignored**, as the brief requires (input locks); the board carries `aria-busy` meanwhile.
+- **A tap anywhere on the page, or any key, skips the end sequence.**
+- **Without GSAP (blocked script) the game still works**, with the reduced-motion behaviour.

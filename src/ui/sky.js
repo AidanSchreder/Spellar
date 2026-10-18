@@ -10,12 +10,15 @@ export function buildSky(svg, stars) {
   const lineLayer = s('g', { class: 'sp-lines' });
   const starLayer = s('g', { class: 'sp-stars' });
   const lines = segments.map(() => lineLayer.appendChild(s('line', { class: 'sp-line' })));
+  // Each star is an outer group placed at the tile centre and an inner group drawn around 0,0, so
+  // the pop can scale the inner group about the centre while a resize moves only the outer one.
   const nodes = stars.map((st) => {
     const g = s('g', { class: st.solved ? 'sp-star' : 'sp-ring' });
+    const body = g.appendChild(s('g', { class: 'sp-star-body' }));
     if (st.solved) {
-      g.append(s('circle', { class: 'sp-star-halo' }), s('circle', { class: 'sp-star-dot' }));
+      body.append(s('circle', { class: 'sp-star-halo' }), s('circle', { class: 'sp-star-dot' }));
     } else {
-      g.append(s('circle', { class: 'sp-ring-line' }));
+      body.append(s('circle', { class: 'sp-ring-line' }));
     }
     return starLayer.appendChild(g);
   });
@@ -37,9 +40,8 @@ export function layoutSky(svg, sky, tiles, wrap) {
   });
   sky.nodes.forEach((g, i) => {
     const { x, y } = sky.points[i];
-    // Each star scales from its own centre, so its group is moved there and drawn around 0,0.
     g.setAttribute('transform', `translate(${x} ${y})`);
-    for (const c of g.children) {
+    for (const c of g.firstChild.children) {
       c.setAttribute('cx', 0);
       c.setAttribute('cy', 0);
       c.setAttribute('r', c.classList.contains('sp-star-halo') ? r + 2 : r);
