@@ -219,3 +219,15 @@ test('the menu dot state is written: visit on load, played on finish', async ({ 
   await typeWord(page, ANSWER);
   expect(await dot()).toEqual({ firstVisit: DAY, lastPlayed: DAY });
 });
+
+test('a finished page moves on to the next puzzle at midnight, and a stale tab on return', async ({ page }) => {
+  // Finish the game at 23:59:30 with the clock paused, then let it run past midnight.
+  await openOn(page, `${DAY}T23:58:00`);
+  await page.clock.pauseAt(new Date(`${DAY}T23:59:30-04:00`));
+  await typeWord(page, ANSWER);
+  await expect(page.locator('#spellar-root')).toHaveClass(/is-done/);
+  await page.clock.runFor(60_000);
+  await expect(page.locator('#spellar-root')).not.toHaveClass(/is-done/, { timeout: 10_000 });
+  await expect(page.locator('#spellar-root .sp-board')).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('spellar:v1')).puzzle.date)).toBe('2026-10-23');
+});

@@ -22,6 +22,8 @@ export default defineConfig({
     },
     // The PHP plugin in a real WordPress: SPELLAR_WP_URL=http://127.0.0.1:9400 npx playwright test --project=wp
     { name: 'wp', testMatch: /wp[\\/].*\.spec\.mjs$/, use: { ...devices['Desktop Chrome'] } },
+    // The live page: SPELLAR_LIVE_URL=https://www.seds.ca npx playwright test --project=live
+    { name: 'live', testMatch: /live[\\/].*\.spec\.mjs$/, timeout: 90_000, use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
     command: 'node dev/mock-api.mjs',

@@ -293,10 +293,10 @@ export function createGame(root, config) {
     }
 
     function tick() {
-      const left = msUntilMidnight();
-      if (left <= 1000) {
+      // Compare dates rather than counting down to zero: a tick rarely lands in the last second.
+      if (localDate() !== today) {
         clearInterval(countdownTimer);
-        setTimeout(() => window.location.reload(), 1500);
+        window.location.reload();
         return;
       }
       for (const el of root.querySelectorAll('.sp-next')) el.textContent = countdownText();
@@ -433,6 +433,11 @@ export function createGame(root, config) {
 
     return { statsContent, results, answer };
   }
+
+  // A tab left open overnight moves on to the new day's puzzle when the player comes back to it.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && localDate() !== today) window.location.reload();
+  });
 
   run();
   return { store };
