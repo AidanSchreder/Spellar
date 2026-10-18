@@ -81,8 +81,9 @@ STATUS=$(wp plugin list --name=spellar --field=status)
 echo "Plugin status: $STATUS"
 [ "$STATUS" = "active" ] || { echo "Spellar is not active." >&2; exit 1; }
 
-# PHP errors mentioning the plugin, in the server's error log and WordPress's debug log.
-ERRORS=$(ssh "$HOST" 'tail -n 400 ~/logs/seds.ca/https/error.log 2>/dev/null; tail -n 400 ~/seds.ca/wp-content/debug.log 2>/dev/null' | grep -i "spellar" | grep -iE "fatal|warning|error|notice|deprecated" || true)
+# PHP errors mentioning the plugin, in the server's error log and WordPress's debug log. (Apache's
+# "client denied" lines for data/*.json are the .htaccess working, not errors.)
+ERRORS=$(ssh "$HOST" 'tail -n 400 ~/logs/seds.ca/https/error.log 2>/dev/null; tail -n 400 ~/seds.ca/wp-content/debug.log 2>/dev/null' | grep -i "spellar" | grep -E "PHP (Fatal|Parse|Warning|Notice|Deprecated)" || true)
 if [ -n "$ERRORS" ]; then
   echo "PHP messages mentioning Spellar:" >&2
   echo "$ERRORS" >&2
