@@ -7,7 +7,9 @@ is `SPELLAR_BUILD.md` in the local folder only (git-ignored: see "Non-negotiable
 ## Server
 
 - SSH alias `seds` (DreamHost shared hosting); site root `~/seds.ca`; plugin in
-  `~/seds.ca/wp-content/plugins/spellar/`. The game page is page ID **32499**, slug `spellar`.
+  `~/seds.ca/wp-content/plugins/spellar/`. The game page is page ID **32499**, slug `spellar`,
+  published 2026-10-18 (puzzle #1 that day). The menu item is **32501** in "Primary English" (after
+  Events, class `spellar-menu-item`, which the menu dot needs).
 - **Every WP-CLI command needs PHP 8.3**: prefix it with `WP_CLI_PHP=/usr/local/php83/bin/php`
   (the default CLI PHP is 8.2 and Contact Form 7 crashes WordPress on it). For example:
   `ssh seds 'WP_CLI_PHP=/usr/local/php83/bin/php wp --path=$HOME/seds.ca spellar stats'`
@@ -61,8 +63,15 @@ the game first goes public and must never be used after that.
   The site is then exactly as before (the counters table stays; nothing else remains active).
 - Database backup taken before the first activation: `~/backups/seds-20261017-pre-spellar.sql.gz`.
   Take a fresh one before any database write: `wp db export - | gzip > ~/backups/seds-$(date +%F-%H%M).sql.gz`.
-- Activating or deactivating any plugin clears every saved page of the site's page cache; the
-  site's timer refills the menu's pages within about 40 minutes.
+- Activating or deactivating any plugin, or saving a menu, clears every saved page of the site's
+  page cache; the site's timer refills the menu's pages within about 40 minutes.
+- **Asset CleanUp** (another plugin, "combine JS" on) reuses a cached combine list per page for 24 h.
+  The game's tags carry `data-wpacu-skip` so it leaves them alone once that list renews; after a
+  deploy, `tests/live` checks that GSAP, DrawSVG and the game still load, in order.
+- Remove the menu item: `wp menu item delete 32501`. Unpublish the page: `wp post update 32499 --post_status=draft`.
+- Checks against the live page (analytics intercepted, nothing is counted):
+  `SPELLAR_LIVE_URL=https://www.seds.ca npx playwright test --project=live` (space runs out; the
+  host is slow when several WordPress requests queue up).
 
 ## Reading stats
 

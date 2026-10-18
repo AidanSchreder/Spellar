@@ -182,9 +182,28 @@ test('at midnight the finished page moves on to the next puzzle', async ({ page 
   expect(stored.date > today).toBe(true);
 });
 
-test('the menu dot script is present but inert until the menu item exists', async ({ page }) => {
-  await page.goto(`${BASE}/`);
-  expect(await page.locator('script#spellar-dot').count()).toBe(1);
-  expect(await page.locator('.spellar-menu-item').count()).toBe(0);
-  expect(await page.locator('.spellar-dot').count()).toBe(0);
+test.describe('menu dot (the "Spellar" menu item has the class spellar-menu-item)', () => {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Toronto' });
+  const daysAgo = (n) => new Date(Date.parse(today) - n * 864e5).toISOString().slice(0, 10);
+  const cases = [
+    ['a new visitor sees it', null, true],
+    ['day 3, not played today: shown', { firstVisit: daysAgo(2), lastPlayed: daysAgo(1) }, true],
+    ['played today: never shown, not even for a moment', { firstVisit: daysAgo(1), lastPlayed: today }, false],
+    ['more than 7 days after the first visit: never shown', { firstVisit: daysAgo(8) }, false],
+  ];
+  for (const [name, dot, shown] of cases) {
+    test(name, async ({ page }) => {
+      await page.addInitScript((dot) => {
+        if (dot) localStorage.setItem('spellar:dot', JSON.stringify(dot));
+        window.__dotSeen = 0;
+        new MutationObserver((list) => { for (const m of list) for (const n of m.addedNodes) if (n.classList && n.classList.contains('spellar-dot')) window.__dotSeen++; })
+          .observe(document, { childList: true, subtree: true });
+      }, dot);
+      await page.goto(`${BASE}/events/`, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+      await page.waitForTimeout(2000);
+      expect(await page.locator('.spellar-menu-item').count()).toBeGreaterThan(0);
+      expect(await page.evaluate(() => window.__dotSeen)).toBe(shown ? 1 : 0);
+      expect(await page.locator('.spellar-menu-item .spellar-dot').count()).toBe(shown ? 1 : 0);
+    });
+  }
 });
