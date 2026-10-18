@@ -70,7 +70,7 @@ the game first goes public and must never be used after that.
   deploy, `tests/live` checks that GSAP, DrawSVG and the game still load, in order.
 - Remove the menu item: `wp menu item delete 32501`. Unpublish the page: `wp post update 32499 --post_status=draft`.
 - Checks against the live page (analytics intercepted, nothing is counted):
-  `SPELLAR_LIVE_URL=https://www.seds.ca npx playwright test --project=live` (space runs out; the
+  `SPELLAR_LIVE_URL=https://www.seds.ca npx playwright test --project=live` (run it sparingly: the
   host is slow when several WordPress requests queue up).
 
 ## Reading stats
