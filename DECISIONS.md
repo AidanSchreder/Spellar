@@ -16,6 +16,12 @@ what the brief left open and what was found on the site.
 
 - **Backup before the first activation: `~/backups/seds-20261017-pre-spellar.sql.gz`** on the server (outside the web root), taken 2026-10-17 20:24 PDT with `wp db export - | gzip`; 177 MB, gzip-checked, ends "Dump completed". Gzipped because the backups folder already holds 4.9 GB of uncompressed dumps. Restore: `gunzip -c ~/backups/seds-20261017-pre-spellar.sql.gz | wp db import -` (only if something went badly wrong: it would undo every change made to the site since).
 - **Homepage before the plugin (2026-10-17 20:20 PDT, page-cache copy, logged out, fresh browser): 74 requests, 1,428.9 KB transferred, 390.3 KB of HTML** (`node dev/footprint.mjs`).
+- **Plugin activated 2026-10-17 ~20:30 PDT** with `bin/deploy.sh --first` (php -l, activate, smoke test all passed).
+- **Homepage after activation: 74 requests, 1,427.7 KB, 390.9 KB of HTML.** The HTML differs only by the inline `<script id="spellar-dot">` (676 bytes; the other differences are per-visit IDs from hCaptcha and PayPal). No Spellar file is requested on the homepage.
+- **The game page is an Elementor page (ID 32499, draft) with one Shortcode widget** in a section with no column gap, plus the theme settings the site's pages use (title hidden, full width, no sidebar), so editors can open it in Elementor like every other page and its width matches the harness. Created with `bin/create-page.php`. SEO: no SEO plugin is active, so nothing is set.
+- **The draft was checked by rendering it through the theme with WP-CLI** (`bin/render-preview.php`), since a draft can only be previewed while logged in. The game fits 360×640 below the real header with no style leaking from the theme or Elementor.
+- **`data/schedule.json` and `data/words.json` answer 404 on the live site** (the server reports denied files as not found); `guesses.txt` is served gzipped (122 KB).
+- **No test events were sent to production**: only invalid ones, which are refused before counting; the counters read zero.
 
 ## Repo and tooling
 
