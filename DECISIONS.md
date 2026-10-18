@@ -18,3 +18,13 @@ what the brief left open and what was found on the site.
 - **All text files use LF line endings** (`.gitattributes`) — this machine's Git has `core.autocrlf=true`, which would break the shell and PHP files on the Linux server.
 - **GSAP 3.15.0** from npm; GreenSock's skills are in `.claude/skills/` (MIT, committed so later sessions have them).
 - **Client source is bundled with esbuild** — `src/` (ES modules, unit-testable) → `assets/spellar.js` (one minified IIFE, committed). GSAP and DrawSVG stay separate files in `assets/vendor/` so they are cached independently of game updates. Change: `bin/build-client.mjs`.
+
+## Data
+
+- **Allowed guesses = ENABLE + a SCOWL top-up − two blocklists + every answer** (50,864 words). ENABLE (public domain, [dolph/dictionary @694bf95](https://github.com/dolph/dictionary)) is the base. It lacks about 250 common modern words (EMAIL, ONLINE, AIRLOCK, WEBSITE), so SCOWL size 50 (US/GB/CA, [app.aspell.net](http://app.aspell.net/create), © Kevin Atkinson, permissive licence) fills those in, minus a hand list of abbreviations. Removed: the LDNOOBW English list ([CC BY 4.0](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words), mostly sexual terms) and, from [dsojevic/profanity-list](https://github.com/dsojevic/profanity-list) (MIT), every entry of severity 2+ and every racial or anti-LGBTQ slur, each with its plural and other simple endings. Some blocked words have innocent meanings too (DYKE, PANSY); blocking them as guesses was judged the smaller harm. Change: `bin/build-guesses.mjs`, then re-run it.
+- **`words.json` entries carry a fourth field, `"proper": true/false`** — the brief limits proper nouns to 30–40% and to two days in a row, which needs a per-word flag. "Proper" means the fact treats the answer as a name (planet, star, constellation, spacecraft, mission). Change: edit the flag; `validate-data` requires it.
+- **Pinned facts must contain "on this day"** — `validate-data` enforces the brief's rule that a pinned fact says why it is on that day.
+- **A pinned word appears only on its anniversary** (once a year); the daily rotation draws from the unpinned words. 02-29 cannot be pinned.
+- **The schedule's launch date is provisional: 2026-10-17** — puzzle #1 should be the day the page is published. Before publishing, `node bin/extend-schedule.mjs --relaunch <date> --force` renumbers and regenerates it; after publishing that must never be run again.
+- **Schedule generated 400 days ahead** (the brief asks for at least 365). `validate-data` fails when fewer than 60 days remain, so a deploy forces an extension.
+- **Every dated or numbered fact was checked by web search on 2026-10-17**; sources in `docs/fact-sources.md`, open questions in `docs/word-review.md`.
