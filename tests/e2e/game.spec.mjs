@@ -261,6 +261,24 @@ test.describe('loading the puzzle', () => {
     await expect(page.locator('#spellar-root .sp-answer-word')).toHaveText(ANSWER);
   });
 
+  test('a guess sent before the word list has loaded waits for it, with the board marked busy', async ({ page }) => {
+    let release;
+    const held = new Promise((r) => (release = r));
+    await page.route('**/data/guesses.txt*', async (route) => {
+      await held;
+      await route.continue();
+    });
+    await openOn(page, `${DAY}T10:00:00`);
+    await page.keyboard.type('clear');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#spellar-root .sp-board')).toHaveAttribute('aria-busy', 'true');
+    release();
+    await expect(page.locator('#spellar-root .sp-board[aria-busy]')).toHaveCount(0);
+    await expect(tile(page, 0, 0)).toHaveAttribute('aria-label', 'C, correct');
+    await typeWord(page, ANSWER); // the next guess goes through as normal
+    await expect(page.locator('#spellar-root .sp-answer-word')).toHaveText(ANSWER);
+  });
+
   test('the game script may run before the page reaches its root', async ({ page }) => {
     // The page stalls before the root, so the async script has arrived and run by then.
     await openOn(page, `${DAY}T10:00:00`, { path: '/?stall=1500' });

@@ -215,7 +215,9 @@ test.describe('menu dot (the "Spellar" menu item has the class spellar-menu-item
           }
         }).observe(document, { childList: true, subtree: true });
       }, dot);
-      await page.goto(`${BASE}/events/`, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+      // The game page: its saved copy is renewed by every deploy, so it has the current dot script
+      // (other pages' copies catch up within the page cache's 8 hours).
+      await page.goto(PAGE, { waitUntil: 'domcontentloaded', timeout: 90_000 });
       await page.waitForTimeout(2000);
       expect(await page.locator('.spellar-menu-item').count()).toBeGreaterThan(0);
       const seen = await page.evaluate(() => window.__dot);

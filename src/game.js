@@ -231,16 +231,22 @@ export function createGame(root, config) {
     async function submit() {
       const r = saved().guesses.length;
       if (current.length < cols) return rejected('Not enough letters');
+      // Busy from here: the word is checked (the list may still be loading), then revealed.
       locked = true;
+      board.board.setAttribute('aria-busy', 'true');
+      const unlock = () => {
+        locked = false;
+        board.board.removeAttribute('aria-busy');
+      };
       let dictionary;
       try {
         dictionary = await loadDictionary(config.guessesUrl);
       } catch {
-        locked = false;
+        unlock();
         return toast('The word list did not load. Try again.');
       }
       if (!dictionary.has(current)) {
-        locked = false;
+        unlock();
         return rejected('Not in word list');
       }
       const guess = current;
@@ -250,7 +256,6 @@ export function createGame(root, config) {
       store.update((s) => s.game.guesses.push(guess));
       results.push(res);
 
-      board.board.setAttribute('aria-busy', 'true'); // the row is being revealed; input is locked
       await motion.reveal({
         tiles: board.tiles[r],
         count: cols,
@@ -431,9 +436,10 @@ export function createGame(root, config) {
     if (saved().status !== 'playing') {
       showFinished(false);
     } else {
-      // Fetch the word list while the player thinks about the first guess.
+      // Fetch the word list while the player thinks about the first guess: when the page is idle,
+      // or after 2 s at the latest (the board is ready long before a busy page goes idle).
       const later = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
-      later(() => loadDictionary(config.guessesUrl).catch(() => {}));
+      later(() => loadDictionary(config.guessesUrl).catch(() => {}), { timeout: 2000 });
     }
 
     return { statsContent, results, answer };
