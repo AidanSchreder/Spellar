@@ -60,3 +60,17 @@ what the brief left open and what was found on the site.
 - **Typing during a reveal is ignored**, as the brief requires (input locks); the board carries `aria-busy` meanwhile.
 - **A tap anywhere on the page, or any key, skips the end sequence.**
 - **Without GSAP (blocked script) the game still works**, with the reduced-motion behaviour.
+
+## Server (plugin)
+
+- **Assets are enqueued when the page's content or its Elementor data contains `[spellar`**, in `<head>` (CSS, font preload) and deferred in the footer (scripts); the shortcode also enqueues as a fallback. Versions are file modification times, so a deploy changes every URL. Change: `spellar_page_has_game()` in `spellar.php`.
+- **Script handles are prefixed (`spellar-gsap`, `spellar-drawsvg`)** so they cannot collide with another plugin's "gsap".
+- **`data/*.json` is denied to browsers** by `data/.htaccess` (Apache) — otherwise the whole schedule, every future answer, could be downloaded from the plugin folder. `guesses.txt` stays public. `index.php` files stop directory listings. (The GitHub repository is public, so the schedule is readable there anyway; see the report.)
+- **Every refusal from the puzzle route carries `Cache-Control: no-store`**; the `date` parameter is validated in the callback rather than by WordPress's argument check for that reason.
+- **A server error (503) is returned if `data/` is missing or unreadable**, rather than a broken puzzle.
+- **Fallback dates are remembered** in the option `spellar_fallback_dates` (one write per date, last 30 kept); the admin notice and `wp spellar stats` warn about any in the last 7 days, and about a schedule with under 60 days left.
+- **The rate-limit transient name is `spellar_rl_` + 24 hex characters of an HMAC (SHA-256, keyed with WordPress's `nonce` salt) of the address and the UTC date**; it expires at the end of the UTC day. 20 events a day.
+- **The table's primary key is (date, metric)** — that is the unique key the brief asks for. `admin_init` recreates the table if its version option is missing (for example after restoring an older database).
+- **WP-CLI: `wp spellar stats [--days=30] [--format=table|csv|json]`, `wp spellar schedule`, `wp spellar flush-page`** (the last clears WP Super Cache's copies of /spellar/ after a deploy, with the cache plugin's own `wpsc_delete_url_cache()`).
+- **Deploy goes over SSH as a tar stream** (this Windows machine has no rsync); the server checks every PHP file with `php -l` (PHP 8.3, the site's version) before its own `rsync --delete` mirrors the files into the plugin folder. Only `spellar.php`, `uninstall.php`, `includes/`, `assets/`, `data/` ship.
+- **Tested in WordPress Playground** (WordPress 7.1, PHP 8.3, SQLite): the PHP and JavaScript puzzle logic return identical responses; dates ±1 day accepted, ±2 and malformed refused; events validated before the rate limit; the 21st event of a day refused; the table kept on deactivation and dropped on uninstall.

@@ -5,7 +5,7 @@
 //   node bin/build-client.mjs           build once
 //   node bin/build-client.mjs --watch   rebuild on change
 
-import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as esbuild from 'esbuild';
 import { ROOT } from './lib/data.mjs';
@@ -28,6 +28,11 @@ const options = {
   banner: { js: `/* Spellar for seds.ca. Source: github.com/AidanSchreder/Spellar (src/). Uses GSAP ${gsapVersion}. */` },
   logLevel: 'info',
 };
+
+// The site-wide menu-dot script is printed inline on every page, so it ships minified (< 1 KB).
+const dot = await esbuild.transform(readFileSync(join(ROOT, 'assets', 'menu-dot.js'), 'utf8'), { minify: true, target: 'es2015' });
+writeFileSync(join(ROOT, 'assets', 'menu-dot.min.js'), dot.code.trim() + '\n');
+console.log(`  assets\\menu-dot.min.js  ${Buffer.byteLength(dot.code.trim())} bytes`);
 
 if (process.argv.includes('--watch')) {
   const ctx = await esbuild.context(options);

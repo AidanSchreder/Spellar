@@ -1,0 +1,11 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "landingPage": "/spellar/",
+  "steps": [
+    { "step": "activatePlugin", "pluginPath": "spellar/spellar.php" },
+    {
+      "step": "runPHP",
+      "code": "<?php require '/wordpress/wp-load.php'; update_option('permalink_structure', '/%postname%/'); if (!get_page_by_path('spellar')) { wp_insert_post(array('post_type' => 'page', 'post_title' => 'Spellar', 'post_name' => 'spellar', 'post_status' => 'publish', 'post_content' => '[spellar]')); } flush_rewrite_rules();"
+    }
+  ]
+}

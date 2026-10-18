@@ -15,6 +15,8 @@ export default defineConfig({
       testMatch: /e2e[\\/].*\.spec\.mjs$/,
       use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:8780' },
     },
+    // The PHP plugin in a real WordPress: SPELLAR_WP_URL=http://127.0.0.1:9400 npx playwright test --project=wp
+    { name: 'wp', testMatch: /wp[\\/].*\.spec\.mjs$/, use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
     command: 'node dev/mock-api.mjs',
