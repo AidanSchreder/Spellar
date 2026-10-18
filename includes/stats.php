@@ -267,6 +267,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		/**
 		 * Clears the page cache's saved copies of the game page (after a deploy), if WP Super Cache is active.
 		 *
+		 * @subcommand flush-page
 		 * @when after_wp_load
 		 */
 		public function flush_page() {

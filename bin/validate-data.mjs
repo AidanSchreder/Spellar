@@ -110,14 +110,15 @@ if (schedule) {
     }
   }
 
-  // The rotation rules. Past days cannot be changed any more, so only future days fail.
+  // The rotation rules (bin/extend-schedule.mjs keeps them; reported as warnings, since the brief's
+  // list of failures does not include them and past days cannot be changed anyway).
   const lastSeen = new Map();
   let run = 0;
   for (const d of dates) {
     const word = days[d];
     const entry = known.get(word);
     if (!entry) continue;
-    const report = d > today ? errors : warnings;
+    const report = warnings;
     run = entry.proper ? run + 1 : 0;
     if (run > MAX_PROPER_RUN) report.push(`schedule.json: ${d} is the ${run}th proper noun in a row`);
     const last = lastSeen.get(word);

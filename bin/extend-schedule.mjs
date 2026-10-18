@@ -66,12 +66,18 @@ const firstFillable = relaunch || Object.keys(days).length === 0 ? schedule.laun
 /* ---- Rebuild the rotation's state from the days already scheduled ---- */
 
 const used = new Set(); // unpinned words used in the current pass through the pool
+const carry = new Set(); // words borrowed early from the next pass (they count there)
 const lastSeen = new Map(); // word -> last date it was scheduled
 function record(date, word) {
   lastSeen.set(word, date);
   if (!pool.includes(word)) return;
-  used.add(word);
-  if (pool.every((w) => used.has(w))) used.clear();
+  if (used.has(word)) carry.add(word); // a second use within a pass is a borrow from the next one
+  else used.add(word);
+  if (pool.every((w) => used.has(w))) {
+    used.clear();
+    for (const w of carry) used.add(w);
+    carry.clear();
+  }
 }
 
 let remaining = null; // this pass's unused words, in shuffled order
@@ -92,6 +98,21 @@ function properRunWith(date, word) {
   // Look ahead only through days whose word is already fixed (scheduled, or pinned).
   for (let d = addDays(date, 1); (days[d] || pins.has(monthDay(d))) && isProperOn(d); d = addDays(d, 1)) run++;
   return run;
+}
+
+const COMMON_RESERVE = Number(process.env.SPELLAR_COMMON_RESERVE || 3);
+
+// Proper nouns left in this pass must still be separable by the common words left: with p
+// proper and c common words to place, and the current run of proper nouns at r, that needs
+// p <= 2c + (2 - r). Picking with this in mind never strands a cluster at the end of a pass.
+function keepsMixPossible(date, word) {
+  const isProper = proper.get(word) === true;
+  let p = 0;
+  let c = 0;
+  for (const w of remaining) if (w !== word) (proper.get(w) ? p++ : c++);
+  const run = isProper ? properRunWith(date, word) : 0;
+  // Keep a few common words in reserve for days next to pinned proper nouns and for the 30-day rule.
+  return p <= MAX_PROPER_RUN * Math.max(0, c - COMMON_RESERVE) + (MAX_PROPER_RUN - run);
 }
 
 function farEnough(date, word) {
@@ -118,7 +139,20 @@ for (let date = schedule.launch; date <= end; date = addDays(date, 1)) {
       if (remaining && remaining.length === 0) used.clear();
       reshuffle(date);
     }
-    word = remaining.find((w) => farEnough(date, w) && properRunWith(date, w) <= MAX_PROPER_RUN);
+    const fits = (w) => farEnough(date, w) && properRunWith(date, w) <= MAX_PROPER_RUN;
+    // Two days before a pinned proper noun, a common word today keeps tomorrow free to be either.
+    const pinAhead = pins.get(monthDay(addDays(date, 2)));
+    const preferCommon = pinAhead && proper.get(pinAhead) && !days[addDays(date, 1)] && !pins.has(monthDay(addDays(date, 1)));
+    const order = preferCommon ? [...remaining.filter((w) => !proper.get(w)), ...remaining.filter((w) => proper.get(w))] : remaining;
+    word = order.find((w) => fits(w) && keepsMixPossible(date, w)) || order.find(fits);
+    let borrowed = false;
+    if (!word) {
+      // Nothing left in this pass fits today (typically its last word, a proper noun, next to a
+      // pinned one): start the next pass a day early with a word that fits; the leftover comes next.
+      const next = shuffle(pool.filter((w) => used.has(w) && !carry.has(w)), seededRandom(hashString(`spellar|borrow|${date}`)));
+      word = next.find((w) => !proper.get(w) && fits(w)) || next.find(fits);
+      borrowed = Boolean(word);
+    }
     if (!word) {
       word = remaining.find((w) => farEnough(date, w));
       if (word) warnings.push(`${date}: ${word} makes more than ${MAX_PROPER_RUN} proper nouns in a row (no other word fitted)`);
@@ -127,7 +161,7 @@ for (let date = schedule.launch; date <= end; date = addDays(date, 1)) {
       word = remaining[0];
       warnings.push(`${date}: ${word} repeats within ${REPEAT_GAP_DAYS} days (the pool is too small)`);
     }
-    remaining.splice(remaining.indexOf(word), 1);
+    if (!borrowed) remaining.splice(remaining.indexOf(word), 1);
   }
   days[date] = word;
   record(date, word);
