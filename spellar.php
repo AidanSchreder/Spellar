@@ -82,6 +82,19 @@ add_action(
 	}
 );
 
+// The site's Asset CleanUp plugin combines scripts, and after a deploy it once printed the game's
+// page without the GSAP files at all. Its own opt-out, a data-wpacu-skip attribute, makes it leave
+// these tags exactly as WordPress prints them (deferred, in dependency order). Its settings are
+// not touched.
+function spellar_skip_combining( $tag, $handle ) {
+	if ( in_array( $handle, array( 'spellar', 'spellar-gsap', 'spellar-drawsvg' ), true ) && false === strpos( $tag, 'data-wpacu-skip' ) ) {
+		$tag = preg_replace( '/<(script|link)\b/', '<$1 data-wpacu-skip="1"', $tag, 1 );
+	}
+	return $tag;
+}
+add_filter( 'script_loader_tag', 'spellar_skip_combining', 10, 2 );
+add_filter( 'style_loader_tag', 'spellar_skip_combining', 10, 2 );
+
 // The display font is needed for the first paint of the wordmark.
 add_action(
 	'wp_head',

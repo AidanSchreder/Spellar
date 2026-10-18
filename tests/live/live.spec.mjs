@@ -53,33 +53,16 @@ test('the page is served from the page cache and holds nothing date-specific', a
   expect(html).not.toMatch(/"number":\d/);
 });
 
-test('scripts: deferred, in order, and only on this page (Asset CleanUp may combine them)', async ({ request }) => {
+test('scripts: three separate tags, deferred and in order, exempt from Asset CleanUp combining', async ({ request }) => {
   const html = await (await request.get(PAGE)).text();
-  const srcs = [...html.matchAll(/<script\b[^>]*\bsrc=['"]([^'"]+)['"][^>]*>/g)].map((m) => ({ tag: m[0], src: m[1] }));
-  // Either our three files, or Asset CleanUp's combined file holding them (its "combine JS" is on).
-  const ours = srcs.filter((s) => /spellar|gsap|DrawSVG/.test(s.src));
-  let body = '';
-  let tags = ours;
-  if (ours.length < 3) {
-    for (const s of srcs.filter((x) => /asset-cleanup/.test(x.src))) {
-      const js = await (await request.get(s.src)).text();
-      if (js.includes('Spellar for seds.ca')) {
-        body = js;
-        tags = [s];
-      }
-    }
-    expect(body, 'the game script is in one of the combined files').not.toBe('');
-    const at = (x) => body.indexOf(x);
-    expect(at('GreenSock')).toBeGreaterThanOrEqual(0);
-    expect(at('GreenSock')).toBeLessThan(at('DrawSVGPlugin'));
-    expect(at('DrawSVGPlugin')).toBeLessThan(at('Spellar for seds.ca'));
-  } else {
-    expect(ours.map((s) => s.src.replace(/\?.*/, '').split('/').pop())).toEqual(['gsap.min.js', 'DrawSVGPlugin.min.js', 'spellar.js']);
+  const tags = [...html.matchAll(/<script\b[^>]*\bsrc=['"]([^'"]+)['"][^>]*>/g)].filter((m) => /spellar|gsap|DrawSVG/.test(m[1]));
+  expect(tags.map((m) => m[1].replace(/\?.*/, '').split('/').pop())).toEqual(['gsap.min.js', 'DrawSVGPlugin.min.js', 'spellar.js']);
+  for (const [tag, src] of tags) {
+    expect(tag).toMatch(/\bdefer\b/);
+    expect(tag).toContain('data-wpacu-skip');
+    expect(src).toMatch(/^https:\/\//);
   }
-  for (const s of tags) {
-    expect(s.tag).toMatch(/\bdefer\b/);
-    expect(s.src).toMatch(/^https:\/\//);
-  }
+  expect(html).toMatch(/<link[^>]*data-wpacu-skip[^>]*spellar\.css|<link[^>]*spellar\.css[^>]*data-wpacu-skip/);
   expect(html).toMatch(/rel="preload" href="https:[^"]+cormorant-garamond-600\.woff2" as="font"/);
 });
 

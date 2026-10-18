@@ -24,6 +24,7 @@ test.describe('assets load only where the game is', () => {
     expect(html).toMatch(/assets\/vendor\/gsap\.min\.js\?ver=\d+/);
     const tag = html.match(/<script[^>]*assets\/spellar\.js\?ver=\d+[^>]*>/);
     expect(tag && tag[0]).toMatch(/\bdefer\b/);
+    expect(tag[0]).toContain('data-wpacu-skip'); // keeps Asset CleanUp from combining it
     expect(html).toMatch(/rel="preload" href="[^"]+cormorant-garamond-600\.woff2" as="font"/);
     expect(html).toContain('<script id="spellar-dot">');
   });
